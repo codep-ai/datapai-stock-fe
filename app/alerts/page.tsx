@@ -16,7 +16,7 @@ export default function AlertsPage() {
   const universe = Object.fromEntries(UNIVERSE.map((t) => [t.symbol, t.name]));
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-[#252525]">Change Alerts</h1>
         <p className="text-gray-500 text-sm mt-1">

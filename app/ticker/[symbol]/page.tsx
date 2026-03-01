@@ -39,7 +39,7 @@ export default async function TickerPage({
   const latest = alerts[0];
 
   return (
-    <div className="space-y-8">
+    <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
