@@ -8,15 +8,39 @@ export interface PageContent {
 }
 
 /**
- * Parse a TinyFish SSE stream.
- * Events arrive as "data: {...}\n\n" lines.
- * We collect all text/content chunks and the final result.
+ * Recursively flatten a JSON object into readable plain text for diffing.
+ * e.g. { "Press Releases": [{ "Date": "Feb 1", "Title": "..." }] }
+ * → "Press Releases: Date: Feb 1 Title: ..."
+ */
+function flattenToText(obj: unknown, depth = 0): string {
+  if (depth > 10) return "";
+  if (typeof obj === "string") return obj;
+  if (typeof obj === "number" || typeof obj === "boolean") return String(obj);
+  if (Array.isArray(obj)) {
+    return obj.map((item) => flattenToText(item, depth + 1)).join(" | ");
+  }
+  if (obj && typeof obj === "object") {
+    return Object.entries(obj as Record<string, unknown>)
+      .map(([k, v]) => `${k}: ${flattenToText(v, depth + 1)}`)
+      .join(". ");
+  }
+  return "";
+}
+
+/**
+ * Parse the TinyFish SSE stream.
+ *
+ * Actual event sequence observed:
+ *   STARTED → STREAMING_URL → PROGRESS... → COMPLETE
+ *
+ * The content lives in the COMPLETE event under `resultJson` (a structured
+ * JSON object). Earlier guesses ("done", "result.text", etc.) were wrong.
  */
 async function parseSseStream(stream: ReadableStream<Uint8Array>): Promise<PageContent> {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
-  let collectedText = "";
+  let text = "";
   let title = "";
 
   while (true) {
@@ -24,9 +48,8 @@ async function parseSseStream(stream: ReadableStream<Uint8Array>): Promise<PageC
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
 
-    // Process complete SSE lines
     const lines = buffer.split("\n");
-    buffer = lines.pop() ?? ""; // keep incomplete last line
+    buffer = lines.pop() ?? "";
 
     for (const line of lines) {
       if (!line.startsWith("data:")) continue;
@@ -36,31 +59,36 @@ async function parseSseStream(stream: ReadableStream<Uint8Array>): Promise<PageC
       try {
         const event = JSON.parse(jsonStr);
 
-        // Collect any text content from progress events
-        if (event.type === "content" || event.type === "text") {
-          collectedText += (event.content ?? event.text ?? "") + " ";
+        // ── Primary path: COMPLETE event with resultJson ──────────────────
+        if (event.type === "COMPLETE" && event.resultJson) {
+          text = flattenToText(event.resultJson).replace(/\s+/g, " ").trim();
+          // Pull company name as title from the first section if available
+          const firstSection = Object.values(event.resultJson)[0];
+          if (firstSection && typeof firstSection === "object") {
+            const s = firstSection as Record<string, unknown>;
+            title = String(s["Company Name"] ?? s["company_name"] ?? "");
+          }
         }
 
-        // Final result event
-        if (event.type === "done" || event.result) {
-          const result = event.result ?? event;
-          title = result.title ?? title;
-          const finalText =
-            result.text ?? result.content ?? result.extracted_text ?? result.markdown ?? "";
-          if (finalText) collectedText = finalText;
+        // ── Fallback: plain-text fields from other possible event shapes ──
+        if (!text) {
+          const candidate =
+            event.result?.text ??
+            event.result?.content ??
+            event.result?.markdown ??
+            event.text ??
+            event.content ??
+            "";
+          if (candidate) text = String(candidate).replace(/\s+/g, " ").trim();
+          if (!title) title = event.result?.title ?? event.title ?? "";
         }
 
-        // Page title from metadata events
-        if (event.type === "page_info" || event.title) {
-          title = event.title ?? title;
-        }
       } catch {
-        // non-JSON SSE line, skip
+        // non-JSON SSE data line — skip silently
       }
     }
   }
 
-  const text = collectedText.replace(/\s+/g, " ").trim();
   return { title, text };
 }
 
@@ -75,7 +103,7 @@ async function callTinyFish(url: string): Promise<PageContent> {
     },
     body: JSON.stringify({
       url,
-      goal: "Extract all visible text content from this page, including news releases, press releases, headlines, dates, and any investor relations content. Return as plain text.",
+      goal: "Extract all visible text content from this page, including news releases, press releases, headlines, dates, and any company announcements. Return as structured data.",
       proxy_config: { enabled: false },
     }),
   });
@@ -96,7 +124,6 @@ export async function fetchPageText(url: string): Promise<PageContent> {
   try {
     return await callTinyFish(url);
   } catch (err) {
-    // Retry once on failure
     console.warn(`TinyFish retry for ${url}:`, err);
     return await callTinyFish(url);
   }
