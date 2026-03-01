@@ -1,0 +1,34 @@
+[Unit]
+Description=DataPAI × TinyFish Stock Radar — tinyfish.datap.ai
+After=network.target
+
+[Service]
+# Long-running Next.js server (use 'simple', NOT 'oneshot')
+Type=simple
+User=ec2-user
+Group=ec2-user
+
+# Load API keys (TINYFISH_API_KEY etc.)
+EnvironmentFile=/home/ec2-user/.env.dev
+
+# Port — Next.js reads PORT automatically; no code change needed
+Environment=PORT=3085
+Environment=NODE_ENV=production
+Environment=HOSTNAME=0.0.0.0
+
+WorkingDirectory=/home/ec2-user/git/datapai-tinyfish
+
+# Use Node 20 via full nvm path (avoids system Node 8)
+ExecStart=/home/ec2-user/.nvm/versions/node/v20.20.0/bin/npm start
+
+# Restart on crash, wait 10s between attempts
+Restart=always
+RestartSec=10
+
+# Logging — view with: journalctl -u tiny -f
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=datapai-tinyfish
+
+[Install]
+WantedBy=multi-user.target
