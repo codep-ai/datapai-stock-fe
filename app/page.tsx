@@ -28,8 +28,8 @@ export default function Home() {
     <div className="space-y-12">
       {/* Hero */}
       <div className="text-center space-y-4 pt-8">
-        <div className="inline-flex items-center gap-2 bg-blue-900/30 border border-blue-700 rounded-full px-4 py-1 text-blue-400 text-sm">
-          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse inline-block" />
+        <div className="inline-flex items-center gap-2 bg-brand-dim/30 border border-brand-dark rounded-full px-4 py-1 text-brand text-sm">
+          <span className="w-2 h-2 rounded-full bg-brand animate-pulse inline-block" />
           Powered by TinyFish real-browser fetching
         </div>
         <h1 className="text-4xl font-bold text-white">
@@ -43,7 +43,7 @@ export default function Home() {
         <div className="flex gap-4 justify-center pt-4">
           <Link
             href="/alerts"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
+            className="bg-brand-dark hover:bg-brand-darker text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
           >
             View Alerts →
           </Link>
@@ -56,7 +56,7 @@ export default function Home() {
           </button>
         </div>
         {result && (
-          <p className="text-green-400 text-sm">{result}</p>
+          <p className="text-brand text-sm">{result}</p>
         )}
       </div>
 
@@ -69,7 +69,7 @@ export default function Home() {
           { step: "4", label: "Score", desc: "Commitment, hedging, and risk word shifts computed" },
         ].map((item) => (
           <div key={item.step} className="bg-slate-800 border border-slate-700 rounded-xl p-5">
-            <div className="text-blue-400 font-bold text-2xl mb-2">{item.step}</div>
+            <div className="text-brand font-bold text-2xl mb-2">{item.step}</div>
             <div className="text-white font-semibold mb-1">{item.label}</div>
             <div className="text-slate-400 text-sm">{item.desc}</div>
           </div>
@@ -84,9 +84,9 @@ export default function Home() {
             <Link
               key={t.symbol}
               href={`/ticker/${t.symbol}`}
-              className="bg-slate-800 border border-slate-700 hover:border-blue-600 rounded-lg px-4 py-3 transition-colors group"
+              className="bg-slate-800 border border-slate-700 hover:border-brand-dark rounded-lg px-4 py-3 transition-colors group"
             >
-              <div className="text-blue-400 font-bold group-hover:text-blue-300">{t.symbol}</div>
+              <div className="text-brand font-bold group-hover:text-brand-light">{t.symbol}</div>
               <div className="text-slate-400 text-xs mt-0.5 truncate">{t.name}</div>
             </Link>
           ))}

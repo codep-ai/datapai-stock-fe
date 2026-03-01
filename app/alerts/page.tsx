@@ -32,7 +32,7 @@ export default function AlertsPage() {
           </p>
           <Link
             href="/"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="bg-brand-dark hover:bg-brand-darker text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
           >
             Go Home →
           </Link>
@@ -60,7 +60,7 @@ export default function AlertsPage() {
                   <td className="py-3 pr-6">
                     <Link
                       href={`/ticker/${a.ticker}`}
-                      className="text-blue-400 font-bold hover:text-blue-300"
+                      className="text-brand font-bold hover:text-brand-light"
                     >
                       {a.ticker}
                     </Link>

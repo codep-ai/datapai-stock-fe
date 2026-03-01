@@ -1,5 +1,18 @@
 import type { Metadata } from "next";
+import { Poppins, Rajdhani } from "next/font/google";
 import "./globals.css";
+
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-poppins",
+});
+
+const rajdhani = Rajdhani({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-rajdhani",
+});
 
 export const metadata: Metadata = {
   title: "Stock Website Change Radar | DataP.ai",
@@ -12,13 +25,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${poppins.variable} ${rajdhani.variable}`}>
       <body className="min-h-screen bg-slate-900 text-slate-200 antialiased">
         <header className="border-b border-slate-700 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-blue-400 font-bold text-lg">DataP.ai</span>
+            <span className="text-brand font-bold text-lg">DataP.ai</span>
             <span className="text-slate-500">×</span>
-            <span className="text-green-400 font-bold text-lg">TinyFish</span>
+            <span className="text-brand-light font-bold text-lg">TinyFish</span>
           </div>
           <nav className="flex gap-6 text-sm">
             <a href="/" className="text-slate-400 hover:text-white transition-colors">

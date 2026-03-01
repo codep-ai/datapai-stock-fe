@@ -8,10 +8,20 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  /* datap.ai brand greens */
+  --color-brand: #8fbc8f;
+  --color-brand-light: #a8d5a8;
+  --color-brand-dark: #4a7c59;
+  --color-brand-darker: #3d6b4a;
+  --color-brand-dim: #1a3a1a;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--font-poppins), 'Poppins', ui-sans-serif, system-ui, sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-rajdhani), 'Rajdhani', ui-sans-serif, system-ui, sans-serif;
 }

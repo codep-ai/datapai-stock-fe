@@ -51,7 +51,7 @@ export default async function TickerPage({
             href={ticker.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-400 hover:text-blue-300 text-sm mt-1 block"
+            className="text-brand hover:text-brand-light text-sm mt-1 block"
           >
             {ticker.url} ↗
           </a>
