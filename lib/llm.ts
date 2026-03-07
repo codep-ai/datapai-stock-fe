@@ -1,5 +1,5 @@
 /**
- * lib/llm.ts
+ * lib/llm.ts  (V2.1)
  * Paid LLM integration (OpenAI / Gemini) for alert summarisation.
  * Private LLM stub demonstrates the enterprise data-separation story.
  *
@@ -17,8 +17,19 @@ export const PRIVATE_LLM_ENABLED =
 // ─── Paid LLM ─────────────────────────────────────────────────────────────
 
 /**
- * Generate a short, evidence-backed summary of detected page changes.
+ * Generate a structured, evidence-backed summary of detected page changes.
  * Returns null if no API key is configured (graceful degradation).
+ *
+ * Output format (v2.1):
+ *   What changed:
+ *   (one sentence)
+ *
+ *   Why it matters:
+ *   (one sentence)
+ *
+ *   Evidence:
+ *   • quote 1
+ *   • quote 2
  */
 export async function generatePaidSummary(
   ticker: string,
@@ -40,15 +51,23 @@ ${snippet.slice(0, 800)}
 Evidence quotes from the changed text:
 ${quotesBlock}
 
-Provide EXACTLY this structure:
-• [First bullet: what specifically changed in the wording]
-• [Second bullet: the direction of the change — more/less hedging, risk language, forward guidance]
-Why it may matter: [One neutral sentence about potential investor relevance]
+Respond with EXACTLY this structure (no deviation):
+
+What changed:
+[One sentence describing the specific wording change detected.]
+
+Why it matters:
+[One neutral sentence about potential investor relevance. No financial advice.]
+
+Evidence:
+• [Direct quote from the changed text]
+• [Another direct quote from the changed text]
 
 Hard rules:
 - Do NOT say "buy", "sell", "invest", or give any financial advice
-- Include at least one direct quote from the evidence in your bullets
-- Total response MUST be under 160 words
+- "What changed" and "Why it matters" must each be exactly one sentence
+- Evidence bullets must be direct quotes from the evidence provided
+- Total response MUST be under 120 words
 - Be factual, neutral, and specific`;
 
   try {
@@ -70,7 +89,7 @@ async function callOpenAI(prompt: string): Promise<string> {
     body: JSON.stringify({
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 220,
+      max_tokens: 200,
       temperature: 0.2,
     }),
   });
@@ -87,7 +106,7 @@ async function callGemini(prompt: string): Promise<string> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: 220, temperature: 0.2 },
+      generationConfig: { maxOutputTokens: 200, temperature: 0.2 },
     }),
   });
   if (!res.ok)
@@ -103,7 +122,6 @@ async function callGemini(prompt: string): Promise<string> {
 /**
  * Enterprise story: sensitive signal routing to a private/self-hosted model.
  * Only receives pre-computed SCORES (never raw text) to protect sensitive data.
- * In this demo, disabled by default — shows the architecture in the UI.
  */
 export function getPrivateLLMNote(
   commitmentDelta: number,
@@ -113,8 +131,6 @@ export function getPrivateLLMNote(
 ): string | null {
   if (!PRIVATE_LLM_ENABLED) return null;
 
-  // Stub: in production this calls a local Ollama / self-hosted LLM
-  // receiving only the numeric signals, never raw text
   const signals: string[] = [];
   if (riskDelta > 0.5) signals.push("elevated risk language detected");
   if (hedgingDelta > 0.5) signals.push("increased hedging frequency");

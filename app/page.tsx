@@ -1,7 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import { UNIVERSE } from "@/lib/universe";
-import { getAlertSummaryMap, getRecentRuns } from "@/lib/db";
-import ViewAlertsButton from "./components/ViewAlertsButton";
+import { getAlertSummaryMap, getRecentRuns, getLatestAnalyses } from "@/lib/db";
 import LiveScanProgress from "./components/LiveScanProgress";
 
 export const dynamic = "force-dynamic";
@@ -11,86 +11,77 @@ export default function Home() {
   const alertCount = Object.keys(alertMap).length;
   const recentRuns = getRecentRuns(3);
   const lastRun = recentRuns[0] ?? null;
+  const topAlerts = getLatestAnalyses(5);
 
   return (
     <div>
-      {/* ── Full-width green gradient hero ── */}
+      {/* ── Full-width hero ── */}
       <div
         className="w-full px-6 pt-14 pb-14 text-center"
         style={{ background: "linear-gradient(45deg, seagreen, darkseagreen)" }}
       >
         <div className="max-w-3xl mx-auto space-y-5">
 
-          {/* Yellow badge */}
-          <div
-            className="inline-flex items-center gap-2 text-sm"
-            style={{
-              background: "#f9b116",
-              color: "#ffffff",
-              fontWeight: 800,
-              textTransform: "uppercase",
-              letterSpacing: "0.06em",
-              borderRadius: "6px",
-              padding: "8px 20px",
-              fontSize: "0.8rem",
-              textShadow: "0 1px 2px rgba(0,0,0,0.25)",
-            }}
-          >
-            <span className="w-2 h-2 rounded-full bg-white/60 animate-pulse inline-block" />
-            DataPAI &nbsp;·&nbsp; Powered by TinyFish &amp; ag2
+          {/* TinyFish + DataP.ai badge */}
+          <div className="flex items-center justify-center gap-3">
+            <span className="bg-white/95 rounded px-3 py-1 flex items-center shadow-sm">
+              <Image src="/logos/tinyfish.svg" width={80} height={20} alt="TinyFish" style={{ height: "20px", width: "auto" }} />
+            </span>
+            <span className="text-white/60 text-sm">×</span>
+            <span className="bg-white/95 rounded px-3 py-1 flex items-center shadow-sm">
+              <Image src="/logos/datapai.svg" width={80} height={20} alt="DataP.ai" style={{ height: "20px", width: "auto" }} />
+            </span>
           </div>
 
-          <h1 className="text-4xl font-bold text-white drop-shadow-sm">
-            Stock Website Change Radar
+          {/* Headline — Feature 11 */}
+          <h1 className="text-4xl font-bold text-white drop-shadow-sm leading-tight">
+            Detect Meaningful Website Changes<br />
+            <span className="text-white/85">Before Markets React</span>
           </h1>
+
+          {/* Subtext — Feature 11 */}
           <p className="text-white/80 text-lg max-w-xl mx-auto">
-            TinyFish scans real company investor pages. DataPAI cleans, diffs,
-            scores, and surfaces language-shift alerts with evidence and price context.
+            TinyFish scans company websites.<br />
+            DataP.ai converts wording changes into financial signals.
           </p>
 
-          {/* Live scan widget */}
+          {/* Live scan widget — Feature 12 */}
           <div className="pt-2 flex justify-center">
             <LiveScanProgress />
           </div>
 
           {/* View alerts CTA */}
-          <div className="flex justify-center pt-1">
-            <ViewAlertsButton count={alertCount} />
-          </div>
-
-          {/* Partner chips */}
-          <div className="flex items-center justify-center gap-4 pt-3 opacity-85">
-            <span className="text-white/60 text-xs uppercase tracking-widest">Powered by</span>
-            <span className="bg-white/95 rounded px-3 py-1 flex items-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/tinyfish-logo.svg" alt="TinyFish" style={{ height: "20px", width: "auto" }} />
-            </span>
-            <span className="text-white/50 text-sm">&amp;</span>
-            <span className="bg-white/95 rounded px-3 py-1 flex items-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/ag2-logo.png" alt="ag2" style={{ height: "20px", width: "auto" }} />
-            </span>
-          </div>
+          {alertCount > 0 && (
+            <div className="flex justify-center pt-1">
+              <Link
+                href="/alerts"
+                className="px-6 py-2.5 rounded-lg text-sm font-bold uppercase tracking-wide transition-all hover:-translate-y-0.5"
+                style={{ background: "#f9b116", color: "#fff", textShadow: "0 1px 2px rgba(0,0,0,0.2)" }}
+              >
+                ⚡ View {alertCount} Alert{alertCount !== 1 ? "s" : ""} →
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 
       {/* ── Main content ── */}
       <div className="max-w-6xl mx-auto px-6 py-10 space-y-12">
 
-        {/* Last run status bar */}
+        {/* Last scan summary — Feature 12 */}
         {lastRun && (
           <div className="flex items-center gap-4 text-sm text-gray-500 border border-gray-100 rounded-lg px-4 py-3 bg-white shadow-sm">
             <span
-              className="w-2 h-2 rounded-full flex-shrink-0"
+              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
               style={{ background: lastRun.status === "SUCCESS" ? "#2e8b57" : lastRun.status === "RUNNING" ? "#f9b116" : "#ef4444" }}
             />
             <span>Last scan: <strong>{new Date(lastRun.started_at).toLocaleString()}</strong></span>
-            <span>·</span>
-            <span>{lastRun.scanned_count} scanned</span>
-            <span>·</span>
-            <span style={{ color: "#f97316" }}>{lastRun.changed_count} changed</span>
+            <span className="text-gray-300">·</span>
+            <span><strong>{lastRun.scanned_count}</strong> scanned</span>
+            <span className="text-gray-300">·</span>
+            <span style={{ color: "#f97316" }}><strong>{lastRun.changed_count}</strong> changed</span>
             {lastRun.failed_count > 0 && (
-              <><span>·</span><span style={{ color: "#ef4444" }}>{lastRun.failed_count} failed</span></>
+              <><span className="text-gray-300">·</span><span style={{ color: "#ef4444" }}><strong>{lastRun.failed_count}</strong> failed</span></>
             )}
             <Link href={`/run/${lastRun.id}`} className="ml-auto text-gray-400 hover:text-gray-700 underline underline-offset-2 text-xs">
               View run detail →
@@ -98,20 +89,59 @@ export default function Home() {
           </div>
         )}
 
-        {/* How it works */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[
-            { step: "1", label: "Fetch", desc: "TinyFish renders JavaScript-heavy investor pages in a real browser" },
-            { step: "2", label: "Clean & Store", desc: "DataPAI removes nav/footer noise, hashes content, stores versioned snapshots" },
-            { step: "3", label: "Diff & Score", desc: "Text diff detects wording shifts. Word-list scores measure commitment/hedging/risk" },
-            { step: "4", label: "Alert & Explain", desc: "AI summary with direct quotes, confidence score, and price chart context" },
-          ].map((item) => (
-            <div key={item.step} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-              <div className="text-brand font-bold text-2xl mb-2">{item.step}</div>
-              <div className="text-[#252525] font-semibold mb-1">{item.label}</div>
-              <div className="text-gray-500 text-sm">{item.desc}</div>
+        {/* Top alerts — Feature 12 */}
+        {topAlerts.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-[#252525]">Top Alerts</h2>
+              <Link href="/alerts" className="text-sm text-brand hover:underline">View all →</Link>
             </div>
-          ))}
+            <div className="space-y-2">
+              {topAlerts.filter((a) => a.signal_type === "CONTENT_CHANGE" || !a.signal_type).slice(0, 5).map((a) => (
+                <Link
+                  key={a.id}
+                  href={`/ticker/${a.ticker}`}
+                  className="flex items-center gap-4 bg-white border border-gray-200 rounded-lg px-4 py-3 shadow-sm hover:shadow transition-all hover:-translate-y-0.5"
+                  style={a.alert_score > 1 ? { borderColor: "#fb923c" } : a.alert_score < -1 ? { borderColor: "#4ade80" } : { borderColor: "#f9b116" }}
+                >
+                  <span className="font-bold text-brand w-16">{a.ticker}</span>
+                  <span className="text-gray-500 text-sm flex-1 truncate">
+                    {UNIVERSE.find((t) => t.symbol === a.ticker)?.name ?? a.ticker}
+                  </span>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded"
+                    style={{
+                      background: a.signal_type === "CONTENT_CHANGE" ? "#f0fdf4" : "#f5f5f5",
+                      color: a.signal_type === "CONTENT_CHANGE" ? "#166534" : "#6b7280",
+                    }}>
+                    {(a.signal_type ?? "CONTENT CHANGE").replace(/_/g, " ")}
+                  </span>
+                  <span className="font-bold" style={{ color: a.alert_score > 0 ? "#f97316" : "#2e8b57" }}>
+                    {a.alert_score > 0 ? "+" : ""}{a.alert_score.toFixed(2)}
+                  </span>
+                  <span className="text-xs text-gray-400">{Math.round(a.confidence * 100)}% conf</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* How it works */}
+        <div>
+          <h2 className="text-xl font-semibold text-[#252525] mb-4">How It Works</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {[
+              { step: "1", label: "TinyFish Fetches", desc: "Real browser rendering of JavaScript-heavy investor pages — no scraping shortcuts" },
+              { step: "2", label: "DataP.ai Cleans", desc: "Removes nav/footer noise, hashes content, stores versioned snapshots in SQLite" },
+              { step: "3", label: "Diff & Score", desc: "Text diff detects wording shifts. Word-list scores measure commitment/hedging/risk" },
+              { step: "4", label: "AI Signal", desc: "GPT/Gemini summary with direct quotes, confidence score, and price chart context" },
+            ].map((item) => (
+              <div key={item.step} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                <div className="text-brand font-bold text-2xl mb-2">{item.step}</div>
+                <div className="text-[#252525] font-semibold mb-1">{item.label}</div>
+                <div className="text-gray-500 text-sm">{item.desc}</div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Monitored universe */}
@@ -176,7 +206,7 @@ export default function Home() {
         {/* Trust layer callout */}
         <div className="border border-gray-200 rounded-xl p-6 bg-white shadow-sm">
           <h3 className="font-semibold text-[#252525] mb-3">
-            📋 DataPAI Trust Layer — every alert is fully reproducible
+            DataP.ai Trust Layer — every alert is fully reproducible
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-gray-500">
             <div>
@@ -189,7 +219,7 @@ export default function Home() {
             </div>
             <div>
               <div className="font-medium text-gray-700 mb-1">AI Layer</div>
-              Paid LLM summary (GPT/Gemini) · Private LLM mode · Confidence score
+              Paid LLM summary (GPT/Gemini) · Signal classification · Confidence score
             </div>
           </div>
         </div>

@@ -1,6 +1,9 @@
 /**
- * lib/db.ts  (V2)
- * Full V2 schema: companies / runs / snapshots / diffs / analyses / prices
+ * lib/db.ts  (V2.1)
+ * Full V2 schema + V2.1 additions:
+ *   - runs: planned_count, completed_count
+ *   - analyses: signal_type
+ *   - scan_events: per-ticker step log
  */
 
 import Database from "better-sqlite3";
@@ -36,21 +39,23 @@ function initSchema(db: Database.Database) {
       ticker          TEXT PRIMARY KEY,
       name            TEXT NOT NULL,
       website_root    TEXT,
-      page_urls_json  TEXT NOT NULL  -- JSON array of URLs to monitor
+      page_urls_json  TEXT NOT NULL
     );
 
     -- One record per pipeline run
     CREATE TABLE IF NOT EXISTS runs (
-      id              TEXT PRIMARY KEY,
-      started_at      TEXT NOT NULL,
-      finished_at     TEXT,
-      status          TEXT NOT NULL DEFAULT 'RUNNING',  -- RUNNING/SUCCESS/FAILED
+      id               TEXT PRIMARY KEY,
+      started_at       TEXT NOT NULL,
+      finished_at      TEXT,
+      status           TEXT NOT NULL DEFAULT 'PENDING',
       tinyfish_run_ref TEXT,
-      notes           TEXT,
-      scanned_count   INTEGER DEFAULT 0,
-      changed_count   INTEGER DEFAULT 0,
-      alerts_created  INTEGER DEFAULT 0,
-      failed_count    INTEGER DEFAULT 0
+      notes            TEXT,
+      planned_count    INTEGER DEFAULT 0,
+      completed_count  INTEGER DEFAULT 0,
+      scanned_count    INTEGER DEFAULT 0,
+      changed_count    INTEGER DEFAULT 0,
+      alerts_created   INTEGER DEFAULT 0,
+      failed_count     INTEGER DEFAULT 0
     );
 
     -- Raw + cleaned page snapshot per ticker per run
@@ -97,12 +102,26 @@ function initSchema(db: Database.Database) {
       categories_json         TEXT,
       llm_summary_paid        TEXT,
       llm_summary_private     TEXT,
-      reasoning_evidence_json TEXT
+      reasoning_evidence_json TEXT,
+      signal_type             TEXT DEFAULT 'CONTENT_CHANGE'
     );
     CREATE INDEX IF NOT EXISTS idx_analyses_snap
       ON analyses(snapshot_new_id);
 
-    -- Optional: price cache
+    -- Per-ticker step log for live scan progress
+    CREATE TABLE IF NOT EXISTS scan_events (
+      id         TEXT PRIMARY KEY,
+      run_id     TEXT REFERENCES runs(id),
+      ticker     TEXT,
+      step       TEXT NOT NULL,
+      status     TEXT NOT NULL DEFAULT 'start',
+      message    TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_scan_events_run
+      ON scan_events(run_id, ticker, created_at);
+
+    -- Price cache
     CREATE TABLE IF NOT EXISTS prices (
       ticker  TEXT NOT NULL,
       date    TEXT NOT NULL,
@@ -111,6 +130,22 @@ function initSchema(db: Database.Database) {
       PRIMARY KEY (ticker, date)
     );
   `);
+
+  // V2.1 migrations — safe ALTER TABLE for existing DBs
+  const cols = db.prepare("PRAGMA table_info(runs)").all() as { name: string }[];
+  const colNames = cols.map((c) => c.name);
+  if (!colNames.includes("planned_count")) {
+    db.exec("ALTER TABLE runs ADD COLUMN planned_count INTEGER DEFAULT 0");
+  }
+  if (!colNames.includes("completed_count")) {
+    db.exec("ALTER TABLE runs ADD COLUMN completed_count INTEGER DEFAULT 0");
+  }
+
+  const aCols = db.prepare("PRAGMA table_info(analyses)").all() as { name: string }[];
+  const aColNames = aCols.map((c) => c.name);
+  if (!aColNames.includes("signal_type")) {
+    db.exec("ALTER TABLE analyses ADD COLUMN signal_type TEXT DEFAULT 'CONTENT_CHANGE'");
+  }
 }
 
 /** Upsert companies from UNIVERSE on every startup */
@@ -141,6 +176,8 @@ export interface Run {
   status: string;
   tinyfish_run_ref: string | null;
   notes: string | null;
+  planned_count: number;
+  completed_count: number;
   scanned_count: number;
   changed_count: number;
   alerts_created: number;
@@ -187,16 +224,34 @@ export interface Analysis {
   llm_summary_paid: string | null;
   llm_summary_private: string | null;
   reasoning_evidence_json: string | null;
+  signal_type: string;
+}
+
+export interface ScanEvent {
+  id: string;
+  run_id: string;
+  ticker: string;
+  step: string;
+  status: string;
+  message: string | null;
+  created_at: string;
 }
 
 // ─── Run helpers ──────────────────────────────────────────────────────────
 
-export function insertRun(id: string, startedAt: string): void {
+export function insertRun(id: string, startedAt: string, plannedCount = 0): void {
   getDb()
     .prepare(
-      `INSERT INTO runs (id, started_at, status) VALUES (?, ?, 'RUNNING')`
+      `INSERT INTO runs (id, started_at, status, planned_count)
+       VALUES (?, ?, 'PENDING', ?)`
     )
-    .run(id, startedAt);
+    .run(id, startedAt, plannedCount);
+}
+
+export function startRun(id: string): void {
+  getDb()
+    .prepare(`UPDATE runs SET status='RUNNING' WHERE id=?`)
+    .run(id);
 }
 
 export function finishRun(
@@ -212,11 +267,12 @@ export function finishRun(
   getDb()
     .prepare(
       `UPDATE runs SET finished_at=?, status='SUCCESS',
-       scanned_count=?, changed_count=?, alerts_created=?, failed_count=?
+       scanned_count=?, completed_count=?, changed_count=?, alerts_created=?, failed_count=?
        WHERE id=?`
     )
     .run(
       finishedAt,
+      counts.scanned,
       counts.scanned,
       counts.changed,
       counts.alerts,
@@ -315,11 +371,11 @@ export function insertAnalysis(a: Analysis): void {
       `INSERT INTO analyses
          (id, snapshot_new_id, diff_id, commitment_delta, hedging_delta,
           risk_delta, alert_score, confidence, categories_json,
-          llm_summary_paid, llm_summary_private, reasoning_evidence_json)
+          llm_summary_paid, llm_summary_private, reasoning_evidence_json, signal_type)
        VALUES
          (@id, @snapshot_new_id, @diff_id, @commitment_delta, @hedging_delta,
           @risk_delta, @alert_score, @confidence, @categories_json,
-          @llm_summary_paid, @llm_summary_private, @reasoning_evidence_json)`
+          @llm_summary_paid, @llm_summary_private, @reasoning_evidence_json, @signal_type)`
     )
     .run(a);
 }
@@ -334,6 +390,23 @@ export function getLatestAnalyses(limit = 50): (Analysis & Pick<Snapshot, "ticke
        LIMIT ?`
     )
     .all(limit) as (Analysis & Pick<Snapshot, "ticker" | "fetched_at" | "url">)[];
+}
+
+export function getLatestAnalysesBySignalType(
+  signalType: string | null,
+  limit = 50
+): (Analysis & Pick<Snapshot, "ticker" | "fetched_at" | "url">)[] {
+  if (!signalType) return getLatestAnalyses(limit);
+  return getDb()
+    .prepare(
+      `SELECT a.*, s.ticker, s.fetched_at, s.url
+       FROM analyses a
+       JOIN snapshots s ON a.snapshot_new_id = s.id
+       WHERE a.signal_type = ?
+       ORDER BY a.alert_score DESC
+       LIMIT ?`
+    )
+    .all(signalType, limit) as (Analysis & Pick<Snapshot, "ticker" | "fetched_at" | "url">)[];
 }
 
 export function getTickerAnalyses(ticker: string, limit = 5): (Analysis & Pick<Snapshot, "fetched_at" | "url">)[] {
@@ -369,6 +442,25 @@ export function getAlertSummaryMap(): Record<
     .all() as (Analysis & { ticker: string; fetched_at: string; url: string })[];
 
   return Object.fromEntries(rows.map((r) => [r.ticker, r]));
+}
+
+// ─── Scan event helpers ────────────────────────────────────────────────────
+
+export function insertScanEvent(e: ScanEvent): void {
+  getDb()
+    .prepare(
+      `INSERT INTO scan_events (id, run_id, ticker, step, status, message, created_at)
+       VALUES (@id, @run_id, @ticker, @step, @status, @message, @created_at)`
+    )
+    .run(e);
+}
+
+export function getScanEvents(runId: string): ScanEvent[] {
+  return getDb()
+    .prepare(
+      `SELECT * FROM scan_events WHERE run_id = ? ORDER BY created_at ASC`
+    )
+    .all(runId) as ScanEvent[];
 }
 
 // ─── Price helpers ────────────────────────────────────────────────────────

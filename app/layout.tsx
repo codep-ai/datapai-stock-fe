@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Poppins, Rajdhani } from "next/font/google";
+import Image from "next/image";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -15,8 +16,8 @@ const rajdhani = Rajdhani({
 });
 
 export const metadata: Metadata = {
-  title: "Stock Website Change Radar | DataPAI × TinyFish × ag2",
-  description: "Monitor US stock company websites for wording changes — a DataPAI project powered by TinyFish and ag2",
+  title: "DataP.ai × TinyFish | Website Change Intelligence",
+  description: "TinyFish scans company websites. DataP.ai converts wording changes into financial signals.",
 };
 
 export default function RootLayout({
@@ -28,27 +29,30 @@ export default function RootLayout({
     <html lang="en" className={`${poppins.variable} ${rajdhani.variable}`}>
       <body className="min-h-screen bg-[#fcfcfd] text-[#252525] antialiased">
 
-        {/* White navbar — datap.ai style with all three brand logos */}
+        {/* Navbar */}
         <header className="bg-white border-b border-gray-100" style={{ boxShadow: "0 2px 10px rgba(0,0,0,.06)" }}>
           <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
 
-            {/* Left: DataPAI brand logo */}
-            <a href="https://www.datap.ai" target="_blank" rel="noopener noreferrer" title="DataPAI">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/datapai-logo.png" alt="DataPAI" style={{ height: "36px", width: "auto" }} />
-            </a>
-
-            {/* Centre: "Powered by" partners */}
+            {/* Left: TinyFish logo powered by DataP.ai */}
             <div className="flex items-center gap-3">
-              <span className="text-gray-400 text-xs font-medium uppercase tracking-widest">Powered by</span>
               <a href="https://tinyfish.ai" target="_blank" rel="noopener noreferrer" title="TinyFish">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/tinyfish-logo.svg" alt="TinyFish" style={{ height: "24px", width: "auto" }} />
+                <Image
+                  src="/logos/tinyfish.svg"
+                  width={100}
+                  height={28}
+                  alt="TinyFish"
+                  style={{ height: "28px", width: "auto" }}
+                />
               </a>
-              <span className="text-gray-300 text-lg font-extralight select-none">&amp;</span>
-              <a href="https://www.ag2.ai" target="_blank" rel="noopener noreferrer" title="ag2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/ag2-logo.png" alt="ag2" style={{ height: "24px", width: "auto" }} />
+              <span className="text-gray-400 text-xs font-medium">powered by</span>
+              <a href="https://www.datap.ai" target="_blank" rel="noopener noreferrer" title="DataP.ai">
+                <Image
+                  src="/logos/datapai.svg"
+                  width={100}
+                  height={28}
+                  alt="DataP.ai"
+                  style={{ height: "26px", width: "auto" }}
+                />
               </a>
             </div>
 
@@ -60,47 +64,32 @@ export default function RootLayout({
           </div>
         </header>
 
-        {/* No max-w here — pages manage their own containers so the hero can be full-width */}
         <main>{children}</main>
 
-        {/* Dark footer — datap.ai style with all three brand attributions */}
+        {/* Footer */}
         <footer style={{ background: "#252525" }} className="mt-16">
           <div className="max-w-7xl mx-auto px-6 py-8 flex flex-col items-center gap-4">
-
-            {/* Logo row */}
-            <div className="flex items-center gap-6">
-              {/* DataPAI — inverted white for dark bg */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/datapai-logo.png"
-                alt="DataPAI"
-                style={{ height: "26px", width: "auto", filter: "brightness(0) invert(1)", opacity: 0.65 }}
+            <div className="flex items-center gap-4">
+              <span className="bg-white rounded px-2 py-0.5 flex items-center">
+                <Image src="/logos/tinyfish.svg" width={80} height={18} alt="TinyFish" style={{ height: "18px", width: "auto" }} />
+              </span>
+              <span className="text-gray-600 text-lg font-extralight select-none">×</span>
+              <Image
+                src="/logos/datapai.svg"
+                width={80}
+                height={22}
+                alt="DataP.ai"
+                style={{ height: "22px", width: "auto", filter: "brightness(0) invert(1)", opacity: 0.65 }}
               />
-              <span className="text-gray-600 text-xl font-extralight select-none">×</span>
-              {/* TinyFish — white chip to preserve original colours */}
-              <span className="bg-white rounded px-2 py-0.5 flex items-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/tinyfish-logo.svg" alt="TinyFish" style={{ height: "18px", width: "auto" }} />
-              </span>
-              <span className="text-gray-600 text-xl font-extralight select-none">&amp;</span>
-              {/* ag2 — white chip to preserve original colours */}
-              <span className="bg-white rounded px-2 py-0.5 flex items-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/ag2-logo.png" alt="ag2" style={{ height: "18px", width: "auto" }} />
-              </span>
             </div>
-
-            {/* Attribution text */}
             <p className="text-gray-500 text-xs text-center">
               A{" "}
-              <a href="https://www.datap.ai" target="_blank" rel="noopener noreferrer" className="text-[#8fbc8f] hover:text-[#a8d5a8] transition-colors">DataPAI</a>
+              <a href="https://www.datap.ai" target="_blank" rel="noopener noreferrer" className="text-[#8fbc8f] hover:text-[#a8d5a8] transition-colors">DataP.ai</a>
               {" "}project · powered by{" "}
               <a href="https://tinyfish.ai" target="_blank" rel="noopener noreferrer" className="text-[#8fbc8f] hover:text-[#a8d5a8] transition-colors">TinyFish</a>
-              {" "}real-browser technology &amp;{" "}
-              <a href="https://www.ag2.ai" target="_blank" rel="noopener noreferrer" className="text-[#8fbc8f] hover:text-[#a8d5a8] transition-colors">ag2</a>
-              {" "}AI agent framework
+              {" "}real-browser technology
             </p>
-            <p className="text-gray-600 text-xs">Stock Website Change Radar — demo only. Not investment advice.</p>
+            <p className="text-gray-600 text-xs">Website Change Intelligence — demo only. Not investment advice.</p>
           </div>
         </footer>
 

@@ -1,16 +1,17 @@
 /**
- * POST /api/run  (V2)
- * Full V2 pipeline: clean → quality gate → diff → score → LLM summary.
- * Streams SSE progress events back to the client for the live scan UI.
+ * POST /api/run  (V2.1)
+ * Non-blocking: creates run immediately, returns {runId}.
+ * Scan runs asynchronously in background — no permission loops.
+ * Client polls GET /api/run/:id for status.
  *
- * SSE event types emitted:
- *   {type:"start",  runId, total}
- *   {type:"ticker", ticker, status:"scanning"}
- *   {type:"ticker", ticker, status:"ok"|"changed"|"failed", changed?, score?, error?}
- *   {type:"complete", runId, succeeded, failed, changed, alerts}
+ * Features:
+ *   - PENDING → RUNNING → SUCCESS/FAILED lifecycle
+ *   - Per-ticker scan_events step log
+ *   - Signal type classification (CONTENT_CHANGE / ARCHIVE_CHANGE / LAYOUT_CHANGE)
  */
 
 import crypto from "crypto";
+import { NextResponse } from "next/server";
 import { UNIVERSE, type TickerInfo } from "@/lib/universe";
 import { fetchPageText } from "@/lib/tinyfish";
 import { cleanText } from "@/lib/clean";
@@ -20,44 +21,79 @@ import { computeScoreDeltas } from "@/lib/score";
 import { generatePaidSummary, getPrivateLLMNote, PRIVATE_LLM_ENABLED } from "@/lib/llm";
 import {
   insertRun,
+  startRun,
   finishRun,
+  failRun,
   insertSnapshot,
   getPreviousSnapshot,
   insertDiff,
   insertAnalysis,
+  insertScanEvent,
+  getDb,
 } from "@/lib/db";
 
 export const maxDuration = 300;
 
-// ─── Ticker processor ─────────────────────────────────────────────────────
+// ─── Signal type classification ────────────────────────────────────────────
 
-type TickerEvent =
-  | { type: "ticker"; ticker: string; status: "scanning" }
-  | {
-      type: "ticker";
-      ticker: string;
-      status: "ok" | "changed" | "failed";
-      changed?: boolean;
-      score?: number;
-      confidence?: number;
-      error?: string;
-    };
+function classifySignal(
+  addedLineTexts: string[],
+  changedPct: number,
+  riskDelta: number
+): "CONTENT_CHANGE" | "ARCHIVE_CHANGE" | "LAYOUT_CHANGE" {
+  const archiveKeywords = ["date:", "headline:", "press_release:", "posted:", "published:"];
+  const archiveMatches = addedLineTexts.filter((line) => {
+    const lower = line.toLowerCase();
+    return archiveKeywords.some((kw) => lower.includes(kw));
+  });
+  if (archiveMatches.length >= 2 || archiveMatches.length / Math.max(addedLineTexts.length, 1) > 0.4) {
+    return "ARCHIVE_CHANGE";
+  }
+  if (changedPct > 80 && riskDelta === 0) {
+    return "LAYOUT_CHANGE";
+  }
+  return "CONTENT_CHANGE";
+}
+
+// ─── Log scan step ─────────────────────────────────────────────────────────
+
+function logStep(runId: string, ticker: string, step: string, status: "start" | "done" | "error", message?: string) {
+  try {
+    insertScanEvent({
+      id: crypto.randomUUID(),
+      run_id: runId,
+      ticker,
+      step,
+      status,
+      message: message ?? null,
+      created_at: new Date().toISOString(),
+    });
+  } catch { /* best-effort */ }
+}
+
+// ─── Ticker processor ─────────────────────────────────────────────────────
 
 async function processTicker(
   t: TickerInfo,
-  runId: string,
-  emit: (e: TickerEvent) => void
+  runId: string
 ): Promise<{ changed: boolean; alerted: boolean; failed: boolean }> {
-  emit({ type: "ticker", ticker: t.symbol, status: "scanning" });
-
   try {
+    // Step 1: Fetch
+    logStep(runId, t.symbol, "Fetching page", "start");
     const { text, title, finalUrl, tinyfishRunRef } = await fetchPageText(t.url);
+    logStep(runId, t.symbol, "Fetching page", "done");
     const now = new Date().toISOString();
 
-    // Clean & quality-check
+    // Step 2: Extracting / cleaning
+    logStep(runId, t.symbol, "Extracting content", "start");
     const cleaned = cleanText(text);
+    logStep(runId, t.symbol, "Extracting content", "done");
+
+    // Step 3: Quality check
+    logStep(runId, t.symbol, "Cleaning text", "start");
     const quality = checkQuality(cleaned);
     const snapId = crypto.randomUUID();
+    logStep(runId, t.symbol, "Cleaning text", "done");
 
     insertSnapshot({
       id: snapId,
@@ -75,11 +111,8 @@ async function processTicker(
       quality_flags_json: JSON.stringify(quality.flags),
     });
 
-    // Store tinyfish run ref in run record if first ticker
     if (tinyfishRunRef) {
-      // best-effort — ignore failure
       try {
-        const { getDb } = await import("@/lib/db");
         getDb()
           .prepare("UPDATE runs SET tinyfish_run_ref=? WHERE id=? AND tinyfish_run_ref IS NULL")
           .run(tinyfishRunRef, runId);
@@ -88,11 +121,11 @@ async function processTicker(
 
     const prev = getPreviousSnapshot(t.symbol, snapId);
     if (!prev) {
-      emit({ type: "ticker", ticker: t.symbol, status: "ok", changed: false });
       return { changed: false, alerted: false, failed: false };
     }
 
-    // Diff on cleaned text
+    // Step 4: Diff
+    logStep(runId, t.symbol, "Computing diff", "start");
     const diff = diffTexts(prev.cleaned_text, cleaned);
     const diffId = crypto.randomUUID();
     insertDiff({
@@ -105,21 +138,24 @@ async function processTicker(
       removed_lines: diff.removed_lines,
       snippet: diff.snippet,
     });
+    logStep(runId, t.symbol, "Computing diff", "done", `${diff.changed_pct.toFixed(1)}% changed`);
 
-    // No meaningful change
     if (diff.changed_pct < 1 && diff.added_lines === 0) {
-      emit({ type: "ticker", ticker: t.symbol, status: "ok", changed: false });
       return { changed: false, alerted: false, failed: false };
     }
 
-    // Score on cleaned text + evidence quotes from added lines
+    // Step 5: Score
     const scores = computeScoreDeltas(
       prev.cleaned_text,
       cleaned,
       diff.added_line_texts
     );
 
-    // Quality gate: only call paid LLM if quality passes
+    // Classify signal type
+    const signalType = classifySignal(diff.added_line_texts, diff.changed_pct, scores.risk_delta);
+
+    // Step 6: AI analysis
+    logStep(runId, t.symbol, "Running AI analysis", "start");
     let llmSummaryPaid: string | null = null;
     if (passesQualityGate(quality) && scores.evidence_quotes.length > 0) {
       llmSummaryPaid = await generatePaidSummary(
@@ -137,6 +173,7 @@ async function processTicker(
           scores.categories
         )
       : null;
+    logStep(runId, t.symbol, "Running AI analysis", "done");
 
     const analysisId = crypto.randomUUID();
     insertAnalysis({
@@ -152,25 +189,58 @@ async function processTicker(
       llm_summary_paid: llmSummaryPaid,
       llm_summary_private: llmSummaryPrivate,
       reasoning_evidence_json: JSON.stringify(scores.evidence_quotes),
+      signal_type: signalType,
     });
 
-    emit({
-      type: "ticker",
-      ticker: t.symbol,
-      status: "changed",
-      changed: true,
-      score: scores.alert_score,
-      confidence: quality.confidence,
-    });
     return { changed: true, alerted: true, failed: false };
   } catch (err) {
-    emit({
-      type: "ticker",
-      ticker: t.symbol,
-      status: "failed",
-      error: String(err).slice(0, 120),
-    });
+    logStep(runId, t.symbol, "Processing", "error", String(err).slice(0, 120));
     return { changed: false, alerted: false, failed: true };
+  }
+}
+
+// ─── Background scan ──────────────────────────────────────────────────────
+
+async function runScanAsync(runId: string) {
+  try {
+    startRun(runId);
+
+    const CONCURRENCY = 3;
+    const queue = [...UNIVERSE];
+    let scanned = 0, changed = 0, alerted = 0, failed = 0;
+
+    async function worker() {
+      while (queue.length > 0) {
+        const ticker = queue.shift();
+        if (!ticker) break;
+        const result = await processTicker(ticker, runId);
+        scanned++;
+        if (result.changed) changed++;
+        if (result.alerted) alerted++;
+        if (result.failed) failed++;
+        // Update completed_count in real-time for polling
+        try {
+          getDb()
+            .prepare("UPDATE runs SET completed_count=?, scanned_count=? WHERE id=?")
+            .run(scanned, scanned, runId);
+        } catch {}
+      }
+    }
+
+    const workers = Array.from(
+      { length: Math.min(CONCURRENCY, UNIVERSE.length) },
+      worker
+    );
+    await Promise.all(workers);
+
+    finishRun(runId, new Date().toISOString(), {
+      scanned,
+      changed,
+      alerts: alerted,
+      failed,
+    });
+  } catch (err) {
+    failRun(runId, new Date().toISOString(), String(err).slice(0, 200));
   }
 }
 
@@ -179,69 +249,12 @@ async function processTicker(
 export async function POST() {
   const runId = crypto.randomUUID();
   const startedAt = new Date().toISOString();
-  insertRun(runId, startedAt);
+  insertRun(runId, startedAt, UNIVERSE.length);
 
-  const encoder = new TextEncoder();
-
-  const stream = new ReadableStream({
-    async start(controller) {
-      const send = (obj: unknown) => {
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify(obj)}\n\n`)
-        );
-      };
-
-      send({ type: "start", runId, total: UNIVERSE.length });
-
-      // Emit ticker events as they complete (concurrency 3 to respect TinyFish limits)
-      const CONCURRENCY = 3;
-      const queue = [...UNIVERSE];
-      let scanned = 0, changed = 0, alerted = 0, failed = 0;
-
-      async function worker() {
-        while (queue.length > 0) {
-          const ticker = queue.shift();
-          if (!ticker) break;
-          const result = await processTicker(ticker, runId, send);
-          scanned++;
-          if (result.changed) changed++;
-          if (result.alerted) alerted++;
-          if (result.failed) failed++;
-        }
-      }
-
-      const workers = Array.from(
-        { length: Math.min(CONCURRENCY, UNIVERSE.length) },
-        worker
-      );
-      await Promise.all(workers);
-
-      finishRun(runId, new Date().toISOString(), {
-        scanned,
-        changed,
-        alerts: alerted,
-        failed,
-      });
-
-      send({
-        type: "complete",
-        runId,
-        succeeded: scanned - failed,
-        failed,
-        changed,
-        alerts: alerted,
-      });
-
-      controller.close();
-    },
+  // Fire and forget — scan runs in background on persistent Node.js server
+  runScanAsync(runId).catch((err) => {
+    console.error("[run] background scan error:", err);
   });
 
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-      "X-Accel-Buffering": "no", // disable nginx buffering for SSE
-    },
-  });
+  return NextResponse.json({ runId });
 }

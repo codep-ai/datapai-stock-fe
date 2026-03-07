@@ -1,117 +1,164 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { UNIVERSE } from "@/lib/universe";
 
-type TickerStatus = "pending" | "scanning" | "ok" | "changed" | "failed";
+type TickerStatus = "pending" | "scanning" | "completed" | "failed";
 
 interface TickerState {
   status: TickerStatus;
   score?: number;
   confidence?: number;
-  error?: string;
+  currentStep?: string;
+  changed?: boolean;
 }
 
-interface CompleteEvent {
-  runId: string;
-  succeeded: number;
-  failed: number;
-  changed: number;
-  alerts: number;
+interface ScanEvent {
+  ticker: string;
+  step: string;
+  status: "start" | "done" | "error";
+  message?: string;
 }
+
+interface RunData {
+  status: string;
+  planned_count: number;
+  completed_count: number;
+  changed_count: number;
+  failed_count: number;
+  scanned_count: number;
+}
+
+interface SnapshotRow {
+  ticker: string;
+  alert_score: number | null;
+  confidence: number | null;
+  changed_pct: number | null;
+}
+
+const STEPS = [
+  "Fetching page",
+  "Extracting content",
+  "Cleaning text",
+  "Computing diff",
+  "Running AI analysis",
+];
 
 export default function LiveScanProgress() {
-  const [running, setRunning] = useState(false);
-  const [done, setDone] = useState(false);
-  const [tickers, setTickers] = useState<Record<string, TickerState>>({});
-  const [summary, setSummary] = useState<CompleteEvent | null>(null);
+  const [phase, setPhase] = useState<"idle" | "running" | "done">("idle");
   const [runId, setRunId] = useState<string | null>(null);
+  const [tickers, setTickers] = useState<Record<string, TickerState>>({});
+  const [run, setRun] = useState<RunData | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function stopPolling() {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }
+
+  async function poll(id: string) {
+    try {
+      const res = await fetch(`/api/run/${id}`);
+      if (!res.ok) return;
+      const data = await res.json() as { run: RunData; snapshots: SnapshotRow[]; scanEvents: ScanEvent[] };
+
+      setRun(data.run);
+
+      // Build ticker state from scan_events + snapshots
+      const newTickers: Record<string, TickerState> = {};
+      for (const t of UNIVERSE) {
+        newTickers[t.symbol] = { status: "pending" };
+      }
+
+      // Apply scan events to determine current step
+      const tickerSteps: Record<string, { step: string; status: string }> = {};
+      for (const ev of (data.scanEvents || [])) {
+        tickerSteps[ev.ticker] = { step: ev.step, status: ev.status };
+        if (newTickers[ev.ticker]) {
+          newTickers[ev.ticker] = {
+            ...newTickers[ev.ticker],
+            status: ev.status === "error" ? "failed" : "scanning",
+            currentStep: ev.step,
+          };
+        }
+      }
+
+      // Apply completed snapshots
+      for (const snap of (data.snapshots || [])) {
+        const lastEvent = tickerSteps[snap.ticker];
+        const isChanged = snap.changed_pct != null && snap.changed_pct > 0;
+        newTickers[snap.ticker] = {
+          status: lastEvent?.status === "error" ? "failed" : "completed",
+          score: snap.alert_score ?? undefined,
+          confidence: snap.confidence ?? undefined,
+          changed: isChanged,
+          currentStep: lastEvent?.step,
+        };
+      }
+
+      setTickers(newTickers);
+
+      // Stop polling when run is done
+      if (data.run.status === "SUCCESS" || data.run.status === "FAILED") {
+        stopPolling();
+        setPhase("done");
+      }
+    } catch (err) {
+      console.error("Poll error:", err);
+    }
+  }
 
   async function startScan() {
-    setRunning(true);
-    setDone(false);
-    setSummary(null);
-    setRunId(null);
-    // Reset all to pending
+    setPhase("running");
+    setRun(null);
     const initial: Record<string, TickerState> = {};
     for (const t of UNIVERSE) initial[t.symbol] = { status: "pending" };
     setTickers(initial);
 
     try {
       const res = await fetch("/api/run", { method: "POST" });
-      if (!res.body) throw new Error("No response stream");
+      const data = await res.json() as { runId: string };
+      setRunId(data.runId);
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done: streamDone, value } = await reader.read();
-        if (streamDone) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data:")) continue;
-          const json = line.slice(5).trim();
-          if (!json) continue;
-          try {
-            const event = JSON.parse(json);
-            if (event.type === "start") {
-              setRunId(event.runId);
-            } else if (event.type === "ticker") {
-              setTickers((prev) => ({
-                ...prev,
-                [event.ticker]: {
-                  status: event.status,
-                  score: event.score,
-                  confidence: event.confidence,
-                  error: event.error,
-                },
-              }));
-            } else if (event.type === "complete") {
-              setSummary(event as CompleteEvent);
-              setDone(true);
-            }
-          } catch {}
-        }
-      }
+      // Poll every 2 seconds
+      pollRef.current = setInterval(() => poll(data.runId), 2000);
+      poll(data.runId); // immediate first poll
     } catch (err) {
-      console.error("Scan error:", err);
-    } finally {
-      setRunning(false);
-      setDone(true);
+      console.error("Start scan error:", err);
+      setPhase("idle");
     }
   }
+
+  // Cleanup on unmount
+  useEffect(() => () => stopPolling(), []);
+
+  const completedCount = Object.values(tickers).filter(
+    (t) => t.status === "completed" || t.status === "failed"
+  ).length;
+  const total = run?.planned_count || UNIVERSE.length;
+  const progress = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+  const isDone = phase === "done";
 
   const statusIcon: Record<TickerStatus, string> = {
     pending: "○",
     scanning: "⟳",
-    ok: "✓",
-    changed: "⚡",
+    completed: "✓",
     failed: "✗",
   };
 
   const statusColor: Record<TickerStatus, string> = {
     pending: "#d1d5db",
     scanning: "#f9b116",
-    ok: "#2e8b57",
-    changed: "#f97316",
+    completed: "#2e8b57",
     failed: "#ef4444",
   };
-
-  const completedCount = Object.values(tickers).filter(
-    (t) => t.status !== "pending" && t.status !== "scanning"
-  ).length;
-  const total = UNIVERSE.length;
-  const progress = total > 0 ? Math.round((completedCount / total) * 100) : 0;
 
   return (
     <div className="w-full space-y-4">
       {/* Trigger button */}
-      {!running && !done && (
+      {phase === "idle" && (
         <button
           onClick={startScan}
           className="px-6 py-3 rounded-lg font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
@@ -121,8 +168,19 @@ export default function LiveScanProgress() {
         </button>
       )}
 
-      {/* Progress while running */}
-      {(running || done) && (
+      {/* Running button (disabled) */}
+      {phase === "running" && (
+        <button
+          disabled
+          className="px-6 py-3 rounded-lg font-semibold text-white/60 cursor-not-allowed"
+          style={{ background: "rgba(255,255,255,0.1)", border: "1.5px solid rgba(255,255,255,0.3)" }}
+        >
+          ⟳ Scanning...
+        </button>
+      )}
+
+      {/* Progress panel */}
+      {(phase === "running" || phase === "done") && (
         <div className="bg-white/10 rounded-xl p-5 backdrop-blur-sm space-y-4 text-left max-w-2xl mx-auto">
           {/* Progress bar */}
           <div className="flex items-center gap-3">
@@ -131,7 +189,7 @@ export default function LiveScanProgress() {
                 className="h-full rounded-full transition-all duration-500"
                 style={{
                   width: `${progress}%`,
-                  background: done ? "#2e8b57" : "#f9b116",
+                  background: isDone ? "#2e8b57" : "#f9b116",
                 }}
               />
             </div>
@@ -144,13 +202,14 @@ export default function LiveScanProgress() {
           <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5">
             {UNIVERSE.map((t) => {
               const state = tickers[t.symbol] ?? { status: "pending" };
+              const isChanged = state.status === "completed" && state.changed;
               return (
                 <div
                   key={t.symbol}
                   className="rounded px-2 py-1.5 text-center"
                   style={{
                     background:
-                      state.status === "changed"
+                      isChanged
                         ? "rgba(249,177,22,0.25)"
                         : state.status === "failed"
                         ? "rgba(239,68,68,0.2)"
@@ -159,25 +218,19 @@ export default function LiveScanProgress() {
                 >
                   <div
                     className="text-xs font-mono"
-                    style={{
-                      color:
-                        state.status === "scanning"
-                          ? "#f9b116"
-                          : "rgba(255,255,255,0.9)",
-                    }}
+                    style={{ color: statusColor[state.status] }}
                   >
                     <span>{statusIcon[state.status]}</span>{" "}
-                    <span className="font-bold">{t.symbol}</span>
+                    <span className="font-bold text-white/90">{t.symbol}</span>
                   </div>
-                  {state.status === "changed" && state.score != null && (
-                    <div className="text-[10px] mt-0.5" style={{ color: "#f9b116" }}>
-                      score {state.score > 0 ? "+" : ""}
-                      {state.score.toFixed(1)}
+                  {state.status === "scanning" && state.currentStep && (
+                    <div className="text-[9px] mt-0.5 text-white/50 animate-pulse truncate">
+                      {state.currentStep}
                     </div>
                   )}
-                  {state.status === "scanning" && (
-                    <div className="text-[10px] mt-0.5 text-white/50 animate-pulse">
-                      scanning…
+                  {isChanged && state.score != null && (
+                    <div className="text-[10px] mt-0.5" style={{ color: "#f9b116" }}>
+                      {state.score > 0 ? "+" : ""}{state.score.toFixed(1)}
                     </div>
                   )}
                 </div>
@@ -185,13 +238,22 @@ export default function LiveScanProgress() {
             })}
           </div>
 
+          {/* Step legend */}
+          {phase === "running" && (
+            <div className="text-[10px] text-white/40 flex flex-wrap gap-x-4 gap-y-1">
+              {STEPS.map((s) => (
+                <span key={s}>· {s}</span>
+              ))}
+            </div>
+          )}
+
           {/* Summary when done */}
-          {done && summary && (
+          {isDone && run && (
             <div className="border-t border-white/20 pt-3 flex flex-wrap gap-4 text-sm text-white/80">
-              <span>✓ {summary.succeeded} succeeded</span>
-              <span style={{ color: "#f9b116" }}>⚡ {summary.changed} changed</span>
-              {summary.failed > 0 && (
-                <span style={{ color: "#ef4444" }}>✗ {summary.failed} failed</span>
+              <span>✓ {run.scanned_count} scanned</span>
+              <span style={{ color: "#f9b116" }}>⚡ {run.changed_count} changed</span>
+              {run.failed_count > 0 && (
+                <span style={{ color: "#ef4444" }}>✗ {run.failed_count} failed</span>
               )}
               {runId && (
                 <a
@@ -205,7 +267,7 @@ export default function LiveScanProgress() {
           )}
 
           {/* Done actions */}
-          {done && (
+          {isDone && (
             <div className="flex gap-3">
               <a
                 href="/alerts"
@@ -215,7 +277,7 @@ export default function LiveScanProgress() {
                 View Alerts
               </a>
               <button
-                onClick={() => { setDone(false); setTickers({}); setSummary(null); }}
+                onClick={() => { setPhase("idle"); setTickers({}); setRun(null); setRunId(null); stopPolling(); }}
                 className="px-4 py-2 rounded-lg text-sm font-semibold text-white/70 hover:text-white border border-white/30"
               >
                 Scan Again

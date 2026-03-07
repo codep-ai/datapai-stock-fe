@@ -311,15 +311,33 @@ export default async function TickerPage({
           </summary>
           <div className="px-6 pb-6 border-t border-gray-100 pt-4">
             <PriceChart data={prices} scanDates={snapshots.map((s) => s.fetched_at.slice(0, 10))} />
-            {prices.length > 0 && prices[prices.length - 1] && (
-              <div className="mt-3 flex gap-6 text-sm text-gray-500">
-                <span>Latest close: <strong>${prices[prices.length - 1].close}</strong></span>
-                <span>30d range: ${Math.min(...prices.map((p) => p.close)).toFixed(2)} – ${Math.max(...prices.map((p) => p.close)).toFixed(2)}</span>
-                {snapshots.length > 0 && (
-                  <span className="text-brand">▼ = scan date</span>
-                )}
-              </div>
-            )}
+            {prices.length > 0 && (() => {
+              const sorted = [...prices].sort((a, b) => a.date.localeCompare(b.date));
+              const last = sorted[sorted.length - 1];
+              const prev = sorted[sorted.length - 2];
+              const oneDayChange = prev ? ((last.close - prev.close) / prev.close) * 100 : null;
+              const last5 = sorted.slice(-5);
+              const low5 = Math.min(...last5.map((p) => p.close));
+              const high5 = Math.max(...last5.map((p) => p.close));
+              return (
+                <div className="mt-4 grid grid-cols-3 gap-4">
+                  <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-100">
+                    <div className="text-gray-400 text-xs mb-1">Last close</div>
+                    <div className="text-lg font-bold text-[#252525]">${last.close.toFixed(2)}</div>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-100">
+                    <div className="text-gray-400 text-xs mb-1">1d change</div>
+                    <div className="text-lg font-bold" style={{ color: oneDayChange == null ? "#9ca3af" : oneDayChange >= 0 ? "#2e8b57" : "#dc2626" }}>
+                      {oneDayChange != null ? (oneDayChange >= 0 ? "+" : "") + oneDayChange.toFixed(2) + "%" : "—"}
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-100">
+                    <div className="text-gray-400 text-xs mb-1">5d range</div>
+                    <div className="text-sm font-bold text-[#252525]">${low5.toFixed(2)} – ${high5.toFixed(2)}</div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </details>
       </div>
