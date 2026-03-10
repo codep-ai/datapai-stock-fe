@@ -507,13 +507,14 @@ export function getTickerAnalyses(ticker: string, limit = 5): (Analysis & Pick<S
 /** Latest analysis per ticker — used for home page alert badges */
 export function getAlertSummaryMap(): Record<
   string,
-  Analysis & Pick<Snapshot, "fetched_at" | "url">
+  Analysis & Pick<Snapshot, "fetched_at" | "url"> & { ticker: string; changed_pct: number | null }
 > {
   const rows = getDb()
     .prepare(
-      `SELECT a.*, s.ticker, s.fetched_at, s.url
+      `SELECT a.*, s.ticker, s.fetched_at, s.url, d.changed_pct
        FROM analyses a
        JOIN snapshots s ON a.snapshot_new_id = s.id
+       LEFT JOIN diffs d ON a.diff_id = d.id
        INNER JOIN (
          SELECT s2.ticker, MAX(s2.fetched_at) AS max_at
          FROM analyses a2
@@ -521,7 +522,7 @@ export function getAlertSummaryMap(): Record<
          GROUP BY s2.ticker
        ) latest ON s.ticker = latest.ticker AND s.fetched_at = latest.max_at`
     )
-    .all() as (Analysis & { ticker: string; fetched_at: string; url: string })[];
+    .all() as (Analysis & { ticker: string; fetched_at: string; url: string; changed_pct: number | null })[];
 
   return Object.fromEntries(rows.map((r) => [r.ticker, r]));
 }

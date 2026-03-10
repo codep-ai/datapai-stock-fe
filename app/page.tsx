@@ -122,7 +122,7 @@ export default function Home() {
                   {hasAlert && (
                     <div className="mt-2 space-y-0.5">
                       <div className="text-xs font-medium" style={{ color: "#b45309" }}>
-                        {(analysis as { changed_pct?: number }).changed_pct?.toFixed(1) ?? "?"}% changed
+                        {analysis.changed_pct != null ? analysis.changed_pct.toFixed(1) : "—"}% changed
                       </div>
                       <div className="text-xs text-gray-400">
                         conf {Math.round(confidence * 100)}%
