@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { UNIVERSE } from "@/lib/universe";
+import { UNIVERSE_ALL } from "@/lib/universe";
 
 type TickerStatus = "pending" | "scanning" | "completed" | "failed";
 
@@ -68,7 +68,7 @@ export default function LiveScanProgress() {
 
       // Build ticker state from scan_events + snapshots
       const newTickers: Record<string, TickerState> = {};
-      for (const t of UNIVERSE) {
+      for (const t of UNIVERSE_ALL) {
         newTickers[t.symbol] = { status: "pending" };
       }
 
@@ -114,7 +114,7 @@ export default function LiveScanProgress() {
     setPhase("running");
     setRun(null);
     const initial: Record<string, TickerState> = {};
-    for (const t of UNIVERSE) initial[t.symbol] = { status: "pending" };
+    for (const t of UNIVERSE_ALL) initial[t.symbol] = { status: "pending" };
     setTickers(initial);
 
     try {
@@ -137,7 +137,7 @@ export default function LiveScanProgress() {
   const completedCount = Object.values(tickers).filter(
     (t) => t.status === "completed" || t.status === "failed"
   ).length;
-  const total = run?.planned_count || UNIVERSE.length;
+  const total = run?.planned_count || UNIVERSE_ALL.length;
   const progress = total > 0 ? Math.round((completedCount / total) * 100) : 0;
   const isDone = phase === "done";
 
@@ -199,8 +199,8 @@ export default function LiveScanProgress() {
           </div>
 
           {/* Ticker grid */}
-          <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5">
-            {UNIVERSE.map((t) => {
+          <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-1.5">
+            {UNIVERSE_ALL.map((t) => {
               const state = tickers[t.symbol] ?? { status: "pending" };
               const isChanged = state.status === "completed" && state.changed;
               return (
@@ -222,6 +222,9 @@ export default function LiveScanProgress() {
                   >
                     <span>{statusIcon[state.status]}</span>{" "}
                     <span className="font-bold text-white/90">{t.symbol}</span>
+                    {t.exchange === "ASX" && (
+                      <span className="ml-0.5 text-[8px] text-white/40">AU</span>
+                    )}
                   </div>
                   {state.status === "scanning" && state.currentStep && (
                     <div className="text-[9px] mt-0.5 text-white/50 animate-pulse truncate">

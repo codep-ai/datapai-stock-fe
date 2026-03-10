@@ -17,7 +17,7 @@
 
 import crypto from "crypto";
 import { NextResponse } from "next/server";
-import { UNIVERSE, type TickerInfo } from "@/lib/universe";
+import { UNIVERSE_ALL, type TickerInfo } from "@/lib/universe";
 import { fetchPageText } from "@/lib/tinyfish";
 import { cleanText } from "@/lib/clean";
 import { checkQuality, passesQualityGate } from "@/lib/quality";
@@ -301,7 +301,7 @@ async function runScanAsync(runId: string) {
     startRun(runId);
 
     const CONCURRENCY = 3;
-    const queue = [...UNIVERSE];
+    const queue = [...UNIVERSE_ALL];
     let scanned = 0, changed = 0, alerted = 0, failed = 0;
 
     async function worker() {
@@ -322,7 +322,7 @@ async function runScanAsync(runId: string) {
     }
 
     const workers = Array.from(
-      { length: Math.min(CONCURRENCY, UNIVERSE.length) },
+      { length: Math.min(CONCURRENCY, UNIVERSE_ALL.length) },
       worker
     );
     await Promise.all(workers);
@@ -343,7 +343,7 @@ async function runScanAsync(runId: string) {
 export async function POST() {
   const runId = crypto.randomUUID();
   const startedAt = new Date().toISOString();
-  insertRun(runId, startedAt, UNIVERSE.length);
+  insertRun(runId, startedAt, UNIVERSE_ALL.length);
 
   // Fire and forget — scan runs in background on persistent Node.js server
   runScanAsync(runId).catch((err) => {

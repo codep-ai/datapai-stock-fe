@@ -19,7 +19,7 @@ export default function AsxPage() {
       <div
         className="w-full flex flex-col justify-center"
         style={{
-          background: "linear-gradient(45deg, #003087, #005eb8)",
+          background: "linear-gradient(45deg, seagreen, darkseagreen)",
           paddingTop: "36px",
           paddingBottom: "36px",
         }}
@@ -27,7 +27,7 @@ export default function AsxPage() {
         <div className="max-w-6xl mx-auto px-6 space-y-4">
           {/* Badge */}
           <div className="flex items-center gap-3">
-            <span className="bg-yellow-400 text-blue-900 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full">
+            <span className="bg-white/20 text-white text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-white/30">
               🇦🇺 ASX · Australia
             </span>
             <Image src="/logos/asx.svg" width={40} height={22} alt="ASX" style={{ height: "22px", width: "auto" }} />
@@ -55,14 +55,14 @@ export default function AsxPage() {
             <Link
               href="/alerts"
               className="px-6 py-3 rounded-lg font-bold uppercase tracking-wide transition-all hover:-translate-y-0.5"
-              style={{ fontSize: "0.9rem", background: "#FFD700", color: "#003087", textShadow: "none" }}
+              style={{ fontSize: "0.9rem", background: "#fd8412", color: "#fff" }}
             >
               ⚡ View All Alerts →
             </Link>
             <Link
               href="/"
               className="px-6 py-3 rounded-lg font-bold uppercase tracking-wide transition-all hover:-translate-y-0.5 border border-white/30 text-white/90"
-              style={{ fontSize: "0.9rem", background: "rgba(255,255,255,0.1)" }}
+              style={{ fontSize: "0.9rem", background: "rgba(255,255,255,0.15)" }}
             >
               🇺🇸 US Markets
             </Link>
@@ -115,14 +115,14 @@ export default function AsxPage() {
                   href={`/ticker/${t.symbol}`}
                   className="relative rounded-xl px-4 py-4 transition-all duration-200 group shadow-sm hover:-translate-y-0.5"
                   style={hasAlert
-                    ? { background: "#fffbe6", border: "1.5px solid #FFD700" }
+                    ? { background: "#f0fff4", border: "1.5px solid #4ade80" }
                     : { background: "#ffffff", border: "1px solid #e5e7eb" }
                   }
                 >
                   {hasAlert && (
                     <span
                       className="absolute -top-2.5 -right-2.5 text-xs font-bold px-2 py-0.5 rounded-full shadow"
-                      style={{ background: "#FFD700", color: "#003087" }}
+                      style={{ background: "#2e8b57", color: "#fff" }}
                     >
                       {analysis.alert_score > 0 ? "+" : ""}{analysis.alert_score.toFixed(1)}
                     </span>
