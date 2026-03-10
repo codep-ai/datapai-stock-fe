@@ -106,32 +106,42 @@ async function parseSseStream(
   return { title, text, finalUrl, tinyfishRunRef };
 }
 
+const TINYFISH_TIMEOUT_MS = 90_000; // 90s max per fetch — prevents hung scans
+
 async function callTinyFish(url: string): Promise<PageContent> {
   const endpoint = `${BASE_URL}/v1/automation/run-sse`;
 
-  const res = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-API-Key": API_KEY,
-    },
-    body: JSON.stringify({
-      url,
-      goal: "Extract all visible text content from this page, including news releases, press releases, headlines, dates, and any company announcements. Return as structured data.",
-      proxy_config: { enabled: false },
-    }),
-  });
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TINYFISH_TIMEOUT_MS);
 
-  if (!res.ok) {
-    const errBody = await res.text();
-    throw new Error(`TinyFish error ${res.status}: ${errBody}`);
+  try {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": API_KEY,
+      },
+      body: JSON.stringify({
+        url,
+        goal: "Extract all visible text content from this page, including news releases, press releases, headlines, dates, and any company announcements. Return as structured data.",
+        proxy_config: { enabled: false },
+      }),
+      signal: ctrl.signal,
+    });
+
+    if (!res.ok) {
+      const errBody = await res.text();
+      throw new Error(`TinyFish error ${res.status}: ${errBody}`);
+    }
+
+    if (!res.body) {
+      throw new Error("TinyFish returned no response body");
+    }
+
+    return await parseSseStream(res.body);
+  } finally {
+    clearTimeout(timer);
   }
-
-  if (!res.body) {
-    throw new Error("TinyFish returned no response body");
-  }
-
-  return parseSseStream(res.body);
 }
 
 export async function fetchPageText(url: string): Promise<PageContent> {
