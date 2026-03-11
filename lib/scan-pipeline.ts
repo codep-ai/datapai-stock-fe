@@ -76,7 +76,7 @@ export function logStep(
 /** Returns a sensible URL to fetch for a ticker we may not have in UNIVERSE_ALL. */
 export function resolveTickerUrl(symbol: string, exchange: string): string {
   if (exchange === "ASX") {
-    return `https://www.asx.com.au/asx/1/company/${symbol}/announcements?count=20`;
+    return `https://asx.api.markitdigital.com/asx-research/1.0/companies/${symbol}/announcements?count=20`;
   }
   if (exchange === "NASDAQ") {
     return `https://www.nasdaq.com/market-activity/stocks/${symbol.toLowerCase()}/news-headlines`;
