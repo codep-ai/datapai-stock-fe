@@ -50,6 +50,11 @@ export default function AsxPage() {
             <TickerSearch />
           </div>
 
+          {/* Scan button — same component as home page */}
+          <div className="pt-1">
+            <LiveScanProgress />
+          </div>
+
           {/* CTA */}
           <div className="flex gap-3 pt-1">
             <Link
@@ -155,11 +160,6 @@ export default function AsxPage() {
             })}
           </div>
 
-          {/* Scan notice */}
-          <div className="mt-6 rounded-xl border border-blue-100 bg-blue-50 px-6 py-4 text-sm text-blue-700">
-            <strong>ASX monitoring is being activated.</strong> Run a live scan to fetch the latest ASX announcements for all monitored companies.
-            Use the "Run Live Scan" button on the home page, or the agent will scan automatically on its next scheduled run.
-          </div>
         </div>
 
         {/* How it works for ASX */}
