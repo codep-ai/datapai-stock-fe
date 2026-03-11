@@ -80,7 +80,7 @@ export async function POST(
     const dir = lookupStock(symbol);
     if (dir) {
       name = dir.name;
-      exchange = dir.exchange;
+      exchange = dir.exchange as typeof exchange;
     }
   }
 
