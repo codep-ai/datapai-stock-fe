@@ -41,17 +41,55 @@ DATAPAI_PG_PASSWORD=postgres
 
 ---
 
-## Apply to EC2
+## Bootstrap a Fresh Database
+
+Run these two scripts **in order** to create all tables and seed the initial data.
+Both scripts are idempotent — safe to re-run on an existing database.
+
+### Option A — From local machine (recommended)
 
 ```bash
-# Via Docker exec (from EC2)
-docker exec -i lightdash_db_1 psql -U postgres -d postgres < db/schema.sql
-docker exec -i lightdash_db_1 psql -U postgres -d postgres < db/seed_companies.sql
-
-# Via SSH from local machine
+# 1. Create schema + all 17 tables + indexes
 ssh -i ~/.ssh/Linux-CodeCambat.pem ec2-user@platform.datap.ai \
-  "docker exec -i lightdash_db_1 psql -U postgres -d postgres" < db/schema.sql
+  "docker exec -i lightdash_db_1 psql -U postgres -d postgres" \
+  < db/schema.sql
+
+# 2. Seed the monitored company universe
+ssh -i ~/.ssh/Linux-CodeCambat.pem ec2-user@platform.datap.ai \
+  "docker exec -i lightdash_db_1 psql -U postgres -d postgres" \
+  < db/seed_companies.sql
 ```
+
+### Option B — Directly on EC2
+
+```bash
+# SSH into EC2 first
+ssh -i ~/.ssh/Linux-CodeCambat.pem ec2-user@platform.datap.ai
+
+# Then from inside EC2 (run from the repo root):
+docker exec -i lightdash_db_1 psql -U postgres -d postgres \
+  < /home/ec2-user/git/datapai-tinyfish/db/schema.sql
+
+docker exec -i lightdash_db_1 psql -U postgres -d postgres \
+  < /home/ec2-user/git/datapai-tinyfish/db/seed_companies.sql
+```
+
+### Verify
+
+```bash
+# Check all 17 tables were created
+docker exec lightdash_db_1 psql -U postgres -d postgres \
+  -c "SELECT tablename FROM pg_tables WHERE schemaname='datapai' ORDER BY tablename;"
+
+# Expected output: 17 rows
+# analyses, chart_analyses, chat_messages, chat_sessions, companies,
+# diffs, prices, runs, scan_events, sessions, snapshots, stock_directory,
+# ta_signals, ticker_context_cache, user_profiles, users, watchlist
+```
+
+> **Note:** `datapai.companies` is also auto-seeded on Next.js startup via
+> `seedCompaniesOnce()` in `lib/db.ts`, so `seed_companies.sql` is only needed
+> for manual bootstrapping or disaster recovery.
 
 ---
 
