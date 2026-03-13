@@ -211,7 +211,9 @@ export default function TechAnalyticsPanel({
         : `/api/ticker/${symbol}/ta-signal`;
       const res = await fetch(url, {
         method: "POST",
-        signal: AbortSignal.timeout(120_000),
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ lang }),
+        signal:  AbortSignal.timeout(120_000),
       });
       let json: { ok?: boolean; data?: TaResult & { cached?: boolean }; error?: { message?: string } | string };
       try {
@@ -249,8 +251,10 @@ export default function TechAnalyticsPanel({
         ? `/api/ticker/${symbol}/chart-analysis?fresh=1`
         : `/api/ticker/${symbol}/chart-analysis`;
       const res = await fetch(url, {
-        method: "POST",
-        signal: AbortSignal.timeout(120_000),
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ lang }),
+        signal:  AbortSignal.timeout(120_000),
       });
       let json: { ok?: boolean; data?: ChartResult & { cached?: boolean }; error?: { message?: string } | string };
       try {
@@ -291,6 +295,7 @@ export default function TechAnalyticsPanel({
           headline: latestHeadline ?? `${symbol} Investor Relations Update`,
           doc_type: "IR Update",
           market_sensitive: false,
+          lang,
         }),
         signal: AbortSignal.timeout(180_000),
       });
@@ -315,8 +320,8 @@ export default function TechAnalyticsPanel({
   // ── Helper: loading spinner ──────────────────────────────────────────────
   const Spinner = ({ label }: { label: string }) => (
     <div className="flex items-center gap-3 py-2">
-      <span className="animate-spin text-xl">⟳</span>
-      <span className="text-white/80 text-sm font-medium animate-pulse">{label}</span>
+      <span className="animate-spin text-xl text-[#2e8b57]">⟳</span>
+      <span className="text-gray-500 text-sm font-medium animate-pulse">{label}</span>
     </div>
   );
 

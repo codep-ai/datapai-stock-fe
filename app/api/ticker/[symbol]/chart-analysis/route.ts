@@ -36,8 +36,13 @@ export async function POST(
   const url       = new URL(req.url);
   const skipCache = url.searchParams.has("fresh") || url.searchParams.has("force");
 
+  // Parse body — lang drives cache bypass and Python prompt language
+  let lang = "en";
+  try { const b = await req.json(); if (b?.lang === "zh") lang = "zh"; } catch { /* ok */ }
+  const useCache = lang !== "zh";
+
   // ── 1. Cache lookup ───────────────────────────────────────────────────────
-  if (!skipCache) {
+  if (!skipCache && useCache) {
     try {
       const cached = getCachedChartAnalysis(symbol, TIMEFRAME, CACHE_HOURS);
       if (cached) {
@@ -78,7 +83,7 @@ export async function POST(
     const res = await fetch(`${AGENT_BASE}/agent/chart-analysis`, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ ticker: symbol, suffix, timeframe: TIMEFRAME, bars: BARS }),
+      body:    JSON.stringify({ ticker: symbol, suffix, timeframe: TIMEFRAME, bars: BARS, lang }),
       signal:  AbortSignal.timeout(115_000),
     });
 
@@ -100,8 +105,8 @@ export async function POST(
       );
     }
 
-    // ── 5. Persist to DB cache ───────────────────────────────────────────────
-    if (json.ok && json.data) {
+    // ── 5. Persist to DB cache (EN only — never cache zh output) ────────────
+    if (json.ok && json.data && useCache) {
       const d       = json.data;
       const now     = new Date();
       const expires = new Date(now.getTime() + CACHE_HOURS * 3_600_000);

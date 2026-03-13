@@ -40,6 +40,7 @@ export async function POST(
     doc_type?: string;
     market_sensitive?: boolean;
     doc_date?: string;
+    lang?: string;
   } = {};
   try {
     body = await req.json();
@@ -62,6 +63,7 @@ export async function POST(
         },
         announcement_text: body.announcement_text ?? "",
         use_grounding:     true,
+        lang:              body.lang === "zh" ? "zh" : "en",
       }),
       signal: AbortSignal.timeout(175_000),
     });
