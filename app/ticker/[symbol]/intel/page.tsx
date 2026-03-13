@@ -15,6 +15,7 @@ import { getLang } from "@/lib/getLang";
 import { t } from "@/lib/translations";
 import TechAnalyticsPanel from "../../../components/TechAnalyticsPanel";
 import WatchlistButton from "../../../components/WatchlistButton";
+import StockChatPanel from "../../../components/StockChatPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -147,6 +148,16 @@ export default async function IntelPage({
             }
             lang={lang}
           />
+
+          {/* ── AI Research Co-pilot chat panel ──────────────────────────── */}
+          <div className="mt-6">
+            <StockChatPanel
+              symbol={sym}
+              exchange={exchangeLabel}
+              lang={lang}
+              snapshotText={(latestSnap?.cleaned_text ?? latestSnap?.text ?? "").slice(0, 3000)}
+            />
+          </div>
         </div>
 
         {/* Bottom nav between stocks */}
