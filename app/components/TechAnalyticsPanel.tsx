@@ -59,6 +59,7 @@ interface MarketIntelResult {
   sector_themes:     string[];
   ticker_catalysts:  string[];
   black_swans:       string[];
+  sources_used:      string[];        // e.g. ["Reuters Finance", "CFR Global Economy", ...]
   cached:            boolean;
   fetched_at:        string | null;
 }
@@ -869,20 +870,32 @@ export default function TechAnalyticsPanel({
                 <SimpleMarkdown>{miResult.intel_markdown}</SimpleMarkdown>
               </div>
 
-              {/* Refresh + data provenance */}
-              <div className="mt-5 pt-4 border-t border-gray-100 flex items-center gap-2 flex-wrap text-xs text-gray-300">
-                <span
-                  className="font-bold text-cyan-600 cursor-pointer hover:text-cyan-700"
-                  onClick={() => runMarketIntel(true)}
-                  title="Re-crawl live data"
-                >
-                  🌊 TinyFish live crawl
-                </span>
-                <span>→ Yahoo Finance Markets (macro)</span>
-                <span>→ Yahoo Finance {symbol} News</span>
-                {sector && <span>→ Yahoo Finance {sector} Sector</span>}
-                <span>→ Senior analyst LLM synthesis</span>
-                <span className="ml-auto italic">{T("panel_not_advice")}</span>
+              {/* Sources crawled + refresh + provenance */}
+              <div className="mt-5 pt-4 border-t border-gray-100 space-y-2">
+                {miResult.sources_used && miResult.sources_used.length > 0 && (
+                  <div className="flex items-start gap-2 flex-wrap">
+                    <span className="text-xs font-semibold text-cyan-700 whitespace-nowrap">🌊 Sources crawled:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {miResult.sources_used.map((src) => (
+                        <span key={src} className="text-xs px-2 py-0.5 rounded-full font-medium"
+                          style={{ background: "#ecfeff", color: "#0e7490", border: "1px solid #a5f3fc" }}>
+                          {src}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 flex-wrap text-xs text-gray-300">
+                  <span
+                    className="font-bold text-cyan-600 cursor-pointer hover:text-cyan-700"
+                    onClick={() => runMarketIntel(true)}
+                    title="Re-crawl all sources"
+                  >
+                    ↻ Refresh
+                  </span>
+                  <span>→ Senior investment bank analyst synthesis</span>
+                  <span className="ml-auto italic">{T("panel_not_advice")}</span>
+                </div>
               </div>
             </div>
           )}

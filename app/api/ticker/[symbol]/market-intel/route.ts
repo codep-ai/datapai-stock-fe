@@ -1,141 +1,89 @@
 /**
  * GET /api/ticker/[symbol]/market-intel?exchange=US&sector=Technology
  *
- * TinyFish Market Intelligence — real-time senior analyst view.
+ * TinyFish Market Intelligence — driven entirely by lib/marketIntelSources.ts.
+ * Add/remove/toggle sources by editing that config file only.
  *
- * Uses TinyFish to crawl three sources in parallel:
- *   1. Yahoo Finance Markets  — global macro headlines + themes
- *   2. Yahoo Finance Ticker   — stock-specific news, analyst actions
- *   3. Yahoo Finance Sector   — sector dynamics, disruption themes
+ * Flow:
+ *  1. Read source registry (lib/marketIntelSources.ts)
+ *  2. Fire all enabled sources in parallel (tier-1 always fresh; tier-2 cached)
+ *  3. Pass all crawled text blocks to Python /agent/market-intel-synthesis
+ *  4. Return senior analyst narrative + stance + theme arrays
  *
- * Then calls the Python backend for LLM synthesis via a Goldman Sachs /
- * Morgan Stanley-quality senior equity research analyst prompt.
- *
- * In-memory cache: TICKER_TTL (2 h). Fresh via ?fresh=1.
+ * Caching:
+ *  - Tier-1: no cache (real-time per request)
+ *  - Tier-2: cacheTtlMs per source (shared across tickers); default 6h
+ *  - Full result: 2h per ticker (bypassed with ?fresh=1)
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { fetchPageText } from "@/lib/tinyfish";
+import {
+  getEnabledSources,
+  resolveSourceUrl,
+  resolveSourceName,
+  type MarketIntelSource,
+} from "@/lib/marketIntelSources";
 
 const AGENT_BASE = (process.env.AGENT_BACKEND_BASE_URL ?? "").replace(/\/$/, "");
 
-// ── In-memory cache ────────────────────────────────────────────────────────────
+// ── In-memory caches ────────────────────────────────────────────────────────────
 
 interface MarketIntelResult {
   intel_markdown:    string;
-  overall_stance:    string | null;  // BULLISH | NEUTRAL | BEARISH
+  overall_stance:    string | null;
   macro_themes:      string[];
   sector_themes:     string[];
   ticker_catalysts:  string[];
   black_swans:       string[];
+  sources_used:      string[];
   cached:            boolean;
   fetched_at:        string;
 }
 
-type CacheEntry = { data: MarketIntelResult; ts: number };
-const _cache = new Map<string, CacheEntry>();
-const TICKER_TTL = 2 * 60 * 60 * 1000; // 2 hours
+const _resultCache = new Map<string, { data: MarketIntelResult; ts: number }>();
+const RESULT_TTL = 2 * 60 * 60 * 1000; // 2h
 
-// ── TinyFish goal strings — structured, specific (per TinyFish examples pattern) ──
+// Per-source tier-2 text cache (key: source id)
+const _sourceCache = new Map<string, { text: string; ts: number }>();
 
-const MACRO_GOAL = `
-Extract the 15-20 most important market and financial news headlines currently on this page.
-For each item provide: (1) headline, (2) date if shown, (3) a 1-2 sentence factual summary.
-
-Prioritise these topics:
-- Federal Reserve / RBA / ECB monetary policy decisions, rate changes, Fed funds futures
-- Inflation data: CPI, PCE, PPI prints vs expectations
-- GDP growth reports, US payrolls, unemployment rate
-- Geopolitical events: trade wars, tariffs, US-China tech decoupling, Middle East energy risks,
-  Russia-Ukraine commodity impact, Taiwan semiconductor risk, sanctions
-- Major index moves (S&P 500, Nasdaq, Dow), bond yield changes (2yr, 10yr, 30yr),
-  DXY dollar index, VIX fear gauge
-- Commodity price shocks (oil/WTI/Brent, gold, copper, LNG)
-- Banking/credit stress, high yield spreads, liquidity conditions
-
-Return as a numbered list. Finish with a brief MACRO SUMMARY section:
-3-5 bullet points on the single most important macro themes right now.
-`.trim();
-
-const TICKER_NEWS_GOAL = `
-Extract all news headlines and analyst research about this stock on this page.
-For each item include: (1) headline, (2) date/time, (3) 1-2 sentence summary.
-
-Specifically look for and highlight:
-- Earnings reports: EPS beat/miss vs consensus, revenue beat/miss, margin trends
-- Revenue and EPS guidance revisions (raised/lowered/withdrawn)
-- Analyst upgrades/downgrades — include the firm name and new price target
-- CEO/CFO/key executive appointments or departures
-- Major product launches, contract wins, strategic partnerships
-- Regulatory approvals, investigations, antitrust actions
-- M&A: acquisition announcements, rumours, divestitures
-- Share buybacks, dividend changes, capital raises
-- Insider buying or selling (Form 4 filings)
-- Short seller reports or activist investor disclosures
-- Competitive threats: new entrants, market share losses
-
-Sort most recent first. If analyst ratings are listed, summarise them in a table:
-Firm | Rating | Price Target | Change.
-`.trim();
-
-const SECTOR_GOAL = `
-Extract the top sector news, analyst views, and industry trends from this page.
-Focus on:
-1. Sector performance vs broader market (%, time period)
-2. Key earnings results from the largest companies in this sector
-3. Analyst consensus changes: sector upgrades/downgrades, sector calls from major banks
-4. Regulatory or policy changes affecting the sector (legislation, antitrust, carbon pricing,
-   capital requirements, drug approvals, tariffs)
-5. Technology disruption themes — especially AI impact, automation, energy transition,
-   electrification, cloud migration, cybersecurity, semiconductors
-6. M&A activity within the sector
-7. Macro factors specific to this sector: rate sensitivity, commodity exposure, FX exposure
-
-Return as a structured list. Add a SECTOR THEMES section at the end with 3-5 bullets on
-the key sector-level thesis an investor should know right now.
-`.trim();
-
-// ── Sector page URL routing ─────────────────────────────────────────────────────
-
-function getSectorUrl(sector: string | null): string {
-  const map: Record<string, string> = {
-    "Technology":              "https://finance.yahoo.com/sectors/technology/",
-    "Information Technology":  "https://finance.yahoo.com/sectors/technology/",
-    "Healthcare":              "https://finance.yahoo.com/sectors/healthcare/",
-    "Financials":              "https://finance.yahoo.com/sectors/financial-services/",
-    "Financial Services":      "https://finance.yahoo.com/sectors/financial-services/",
-    "Energy":                  "https://finance.yahoo.com/sectors/energy/",
-    "Basic Materials":         "https://finance.yahoo.com/sectors/basic-materials/",
-    "Materials":               "https://finance.yahoo.com/sectors/basic-materials/",
-    "Consumer Discretionary":  "https://finance.yahoo.com/sectors/consumer-cyclical/",
-    "Consumer Cyclical":       "https://finance.yahoo.com/sectors/consumer-cyclical/",
-    "Consumer Staples":        "https://finance.yahoo.com/sectors/consumer-defensive/",
-    "Consumer Defensive":      "https://finance.yahoo.com/sectors/consumer-defensive/",
-    "Industrials":             "https://finance.yahoo.com/sectors/industrials/",
-    "Real Estate":             "https://finance.yahoo.com/sectors/real-estate/",
-    "Utilities":               "https://finance.yahoo.com/sectors/utilities/",
-    "Communication Services":  "https://finance.yahoo.com/sectors/communication-services/",
-    "Telecommunications":      "https://finance.yahoo.com/sectors/communication-services/",
-  };
-  return map[sector ?? ""] ?? "https://finance.yahoo.com/markets/";
+function getSourceCache(id: string): string | null {
+  const hit = _sourceCache.get(id);
+  if (!hit) return null;
+  const src = getEnabledSources().find((s) => s.id === id);
+  if (!src) return null;
+  if (Date.now() - hit.ts > src.cacheTtlMs) return null;
+  return hit.text;
+}
+function setSourceCache(id: string, text: string) {
+  _sourceCache.set(id, { text, ts: Date.now() });
 }
 
-// ── Per-crawl timeout wrapper (returns "" on timeout so synthesis still runs) ──
+// ── Per-crawl timeout wrapper (60s; returns "" on failure) ──────────────────────
 
-const CRAWL_TIMEOUT_MS = 60_000; // 60s per crawl
+const CRAWL_TIMEOUT_MS = 60_000;
 
-async function crawlSafe(url: string, goal: string): Promise<string> {
+async function crawlSafe(
+  source: MarketIntelSource,
+  url: string
+): Promise<{ text: string; ok: boolean }> {
   try {
-    const page = await Promise.race([
-      fetchPageText(url, goal),
+    const result = await Promise.race([
+      fetchPageText(url, source.goal),
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`TinyFish timeout after ${CRAWL_TIMEOUT_MS / 1000}s: ${url}`)), CRAWL_TIMEOUT_MS)
+        setTimeout(() => reject(new Error(`timeout ${CRAWL_TIMEOUT_MS / 1000}s`)), CRAWL_TIMEOUT_MS)
       ),
     ]);
-    return page.text;
+    const text = result.text?.trim() ?? "";
+    if (text.length < 100) {
+      console.warn(`[market-intel] ${source.id}: too little text (${text.length} chars)`);
+      return { text: "", ok: false };
+    }
+    console.log(`[market-intel] ${source.id}: OK (${text.length} chars)`);
+    return { text, ok: true };
   } catch (err) {
-    console.warn(`[market-intel] crawl failed for ${url}:`, err);
-    return "";
+    console.warn(`[market-intel] ${source.id} failed:`, String(err).slice(0, 120));
+    return { text: "", ok: false };
   }
 }
 
@@ -151,11 +99,11 @@ export async function GET(
   const sector   = req.nextUrl.searchParams.get("sector")   ?? null;
   const fresh    = req.nextUrl.searchParams.get("fresh")    === "1";
 
-  // ── Cache check ───────────────────────────────────────────────────────────
+  // ── Result cache check ────────────────────────────────────────────────────
   const cacheKey = `${sym}:${exchange}:${sector ?? ""}`;
   if (!fresh) {
-    const hit = _cache.get(cacheKey);
-    if (hit && Date.now() - hit.ts < TICKER_TTL) {
+    const hit = _resultCache.get(cacheKey);
+    if (hit && Date.now() - hit.ts < RESULT_TTL) {
       return NextResponse.json({ ok: true, data: { ...hit.data, cached: true } });
     }
   }
@@ -167,41 +115,79 @@ export async function GET(
     );
   }
 
-  // ── Parallel TinyFish crawls (each capped at 60s; failures return "") ─────
-  const macroUrl  = "https://finance.yahoo.com/markets/";
-  const tickerUrl = `https://finance.yahoo.com/quote/${sym}/news/`;
-  const sectorUrl = getSectorUrl(sector);
+  // ── Resolve source URLs from config ───────────────────────────────────────
+  const sources = getEnabledSources();
 
-  const [marketNewsText, tickerNewsText, sectorNewsText] = await Promise.all([
-    crawlSafe(macroUrl,                        MACRO_GOAL),
-    crawlSafe(tickerUrl,                       TICKER_NEWS_GOAL),
-    sector ? crawlSafe(sectorUrl, SECTOR_GOAL) : Promise.resolve(""),
-  ]);
+  // Build crawl tasks: resolve URL, determine if we need a live crawl or can use cache
+  type CrawlTask = {
+    source: MarketIntelSource;
+    url:    string;
+    cached: string | null; // pre-existing cached text (tier-2 only)
+  };
 
-  // ── Python synthesis — senior investment bank analyst LLM ─────────────────
+  const tasks: CrawlTask[] = [];
+  for (const src of sources) {
+    const url = resolveSourceUrl(src, sym, sector);
+    if (!url) continue; // skip if URL can't be resolved (e.g., sector source without sector)
+    const cachedText = (!fresh && src.tier === 2) ? getSourceCache(src.id) : null;
+    tasks.push({ source: src, url, cached: cachedText });
+  }
+
+  // ── Fire all crawls in parallel ────────────────────────────────────────────
+  const crawlResults = await Promise.all(
+    tasks.map(async (task) => {
+      if (task.cached !== null) {
+        return { source: task.source, text: task.cached, ok: true, fromCache: true };
+      }
+      const result = await crawlSafe(task.source, task.url);
+      // Cache tier-2 results
+      if (task.source.tier === 2 && result.ok) {
+        setSourceCache(task.source.id, result.text);
+      }
+      return { source: task.source, text: result.text, ok: result.ok, fromCache: false };
+    })
+  );
+
+  // ── Build synthesis payload ────────────────────────────────────────────────
+  const sourcesUsed: string[] = [];
+  const sourcePayload: Record<string, string> = {};
+
+  for (const r of crawlResults) {
+    if (!r.ok || !r.text) continue;
+    const displayName = resolveSourceName(r.source, sym, sector);
+    sourcesUsed.push(displayName);
+    // Use source id as payload key (Python side reads these)
+    sourcePayload[r.source.id] = r.text.slice(0, r.source.maxChars);
+  }
+
+  // ── Call Python synthesis endpoint ────────────────────────────────────────
   let synthRes: Response;
   try {
     synthRes = await fetch(`${AGENT_BASE}/agent/market-intel-synthesis`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        ticker:           sym,
+        ticker:       sym,
         exchange,
-        sector:           sector ?? "",
-        market_news_text: marketNewsText.slice(0, 8000),
-        ticker_news_text: tickerNewsText.slice(0, 5000),
-        sector_news_text: sectorNewsText.slice(0, 4000),
+        sector:       sector ?? "",
+        sources_used: sourcesUsed,
+        // All source texts keyed by source id
+        ...sourcePayload,
       }),
-      signal: AbortSignal.timeout(90_000),
+      signal: AbortSignal.timeout(120_000),
     });
   } catch (err) {
     return NextResponse.json(
-      { ok: false, error: `Market intel synthesis request failed: ${String(err)}` },
+      { ok: false, error: `Market intel synthesis failed: ${String(err)}` },
       { status: 502 }
     );
   }
 
-  let synthJson: { ok?: boolean; data?: Partial<MarketIntelResult>; error?: string | { message?: string } };
+  let synthJson: {
+    ok?: boolean;
+    data?: Partial<MarketIntelResult>;
+    error?: string | { message?: string };
+  };
   try {
     synthJson = await synthRes.json();
   } catch {
@@ -226,10 +212,11 @@ export async function GET(
     sector_themes:    synthJson.data?.sector_themes    ?? [],
     ticker_catalysts: synthJson.data?.ticker_catalysts ?? [],
     black_swans:      synthJson.data?.black_swans      ?? [],
+    sources_used:     sourcesUsed,
     cached:           false,
     fetched_at:       new Date().toISOString(),
   };
 
-  _cache.set(cacheKey, { data: result, ts: Date.now() });
+  _resultCache.set(cacheKey, { data: result, ts: Date.now() });
   return NextResponse.json({ ok: true, data: result });
 }
