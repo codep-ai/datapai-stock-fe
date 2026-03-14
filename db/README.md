@@ -12,7 +12,7 @@ PostgreSQL schema shared by two services on the same EC2 host:
 ## Connection
 
 ```
-Host:     172.28.0.3    (EC2 Docker — lightdash_db_1 container)
+Host:     localhost     (port 5432 is bound to 127.0.0.1 in lightdash docker-compose.yml)
 Port:     5432
 Database: postgres
 User:     postgres
@@ -20,15 +20,19 @@ Password: postgres
 Schema:   datapai
 ```
 
-**Environment variables** (both services read these):
+**Environment variables** (both services read from `~/.env.dev`):
 
 ```bash
-DATAPAI_PG_HOST=172.28.0.3
+DATAPAI_PG_HOST=localhost
 DATAPAI_PG_PORT=5432
 DATAPAI_PG_DB=postgres
 DATAPAI_PG_USER=postgres
 DATAPAI_PG_PASSWORD=postgres
 ```
+
+> The Postgres container (`lightdash_db_1`) binds `127.0.0.1:5432:5432` via
+> `lightdash/docker-compose.yml`, so `localhost` is always stable regardless of
+> what internal Docker bridge IP the container gets assigned.
 
 ---
 

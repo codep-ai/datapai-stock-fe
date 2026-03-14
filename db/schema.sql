@@ -4,7 +4,7 @@
 --
 -- Schema   : datapai
 -- Database : postgres  (default)
--- Host     : 172.28.0.3 (EC2 Docker — lightdash_db_1 container)
+-- Host     : localhost   (lightdash_db_1 binds 127.0.0.1:5432 — see lightdash/docker-compose.yml)
 --
 -- Applies to both services that share this Postgres instance:
 --   • datapai-tinyfish   (Next.js 16, node-postgres / pg)

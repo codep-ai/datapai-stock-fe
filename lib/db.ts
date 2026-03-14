@@ -24,7 +24,7 @@ let _pool: Pool | null = null;
 export function getPool(): Pool {
   if (!_pool) {
     _pool = new Pool({
-      host:     process.env.DATAPAI_PG_HOST     ?? "172.28.0.3",
+      host:     process.env.DATAPAI_PG_HOST     ?? "localhost",
       port:     parseInt(process.env.DATAPAI_PG_PORT ?? "5432"),
       database: process.env.DATAPAI_PG_DB       ?? "postgres",
       user:     process.env.DATAPAI_PG_USER     ?? "postgres",
