@@ -9,6 +9,7 @@ import { getInvestorProfile } from "@/lib/investorProfile";
 import LogoutButton from "./components/LogoutButton";
 import LangToggle from "./components/LangToggle";
 import ProfileBadge from "./components/ProfileBadge";
+import OnboardingBanner from "./components/OnboardingBanner";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -117,6 +118,13 @@ export default async function RootLayout({
             </div>
           </div>
         </header>
+
+        {/* Onboarding nudge — only visible to logged-in users who haven't done setup */}
+        {user && (
+          <OnboardingBanner
+            onboardingDone={investorProfile?.onboarding_completed ?? false}
+          />
+        )}
 
         <main>{children}</main>
 
