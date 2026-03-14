@@ -5,8 +5,10 @@ import "./globals.css";
 import { getAuthUser } from "@/lib/auth";
 import { getLang } from "@/lib/getLang";
 import { t } from "@/lib/translations";
+import { getInvestorProfile } from "@/lib/investorProfile";
 import LogoutButton from "./components/LogoutButton";
 import LangToggle from "./components/LangToggle";
+import ProfileBadge from "./components/ProfileBadge";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -31,6 +33,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const [user, lang] = await Promise.all([getAuthUser(), getLang()]);
+  const investorProfile = user ? await getInvestorProfile(user.userId).catch(() => null) : null;
 
   return (
     <html lang={lang === "zh" ? "zh-CN" : "en"} className={`${poppins.variable} ${rajdhani.variable}`}>
@@ -92,7 +95,12 @@ export default async function RootLayout({
 
               {user ? (
                 <>
-                  <span className="text-sm text-gray-400 max-w-[160px] truncate hidden sm:block" title={user.email}>
+                  {/* Profile badge — shows risk level, links to /profile */}
+                  <ProfileBadge
+                    riskTolerance={investorProfile?.risk_tolerance ?? null}
+                    onboardingDone={investorProfile?.onboarding_completed ?? false}
+                  />
+                  <span className="text-sm text-gray-400 max-w-[140px] truncate hidden sm:block" title={user.email}>
                     {user.email}
                   </span>
                   <LogoutButton />

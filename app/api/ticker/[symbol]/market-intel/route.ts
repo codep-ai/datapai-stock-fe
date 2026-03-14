@@ -24,6 +24,8 @@ import {
   resolveSourceName,
   type MarketIntelSource,
 } from "@/lib/marketIntelSources";
+import { getAuthUser } from "@/lib/auth";
+import { getInvestorProfileOrDefault, buildProfileContext } from "@/lib/investorProfile";
 
 const AGENT_BASE = (process.env.AGENT_BACKEND_BASE_URL ?? "").replace(/\/$/, "");
 
@@ -115,6 +117,16 @@ export async function GET(
     );
   }
 
+  // ── Load investor profile for personalised synthesis ──────────────────────
+  let profileCtx = "";
+  try {
+    const user = await getAuthUser();
+    if (user?.userId) {
+      const profile = await getInvestorProfileOrDefault(user.userId);
+      profileCtx   = buildProfileContext(profile);
+    }
+  } catch { /* anonymous — no profile context */ }
+
   // ── Resolve source URLs from config ───────────────────────────────────────
   const sources = getEnabledSources();
 
@@ -167,10 +179,11 @@ export async function GET(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        ticker:       sym,
+        ticker:          sym,
         exchange,
-        sector:       sector ?? "",
-        sources_used: sourcesUsed,
+        sector:          sector ?? "",
+        sources_used:    sourcesUsed,
+        profile_context: profileCtx || null,  // investor profile for personalised framing
         // All source texts keyed by source id
         ...sourcePayload,
       }),
