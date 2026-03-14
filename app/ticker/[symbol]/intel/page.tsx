@@ -45,7 +45,8 @@ export default async function IntelPage({
   const lang = await getLang();
 
   const ticker = UNIVERSE_ALL.find((tk) => tk.symbol === sym);
-  const dirEntry = ticker ? null : await lookupStock(sym);
+  // Always look up from DB so we get sector for Market Intel (even for UNIVERSE_ALL tickers)
+  const dirEntry = await lookupStock(sym);
   const exchangeLabel = (ticker?.exchange ?? dirEntry?.exchange ?? "NASDAQ") as string;
   const companyName = ticker?.name ?? dirEntry?.name ?? sym;
 
@@ -54,6 +55,9 @@ export default async function IntelPage({
   const signalSource = await getLatestAnalysisWithAgentContent(sym);
   // Pass cached TA signal (price, RSI, trend) to chat so AI uses current data not training data
   const cachedTaSignal = await getCachedTaSignal(sym, 48);  // up to 48h old is acceptable
+
+  // Sector: from stock_directory (lookupStock already fetched it)
+  const sectorLabel = dirEntry?.sector ?? null;
 
   return (
     <div>
@@ -146,6 +150,7 @@ export default async function IntelPage({
           <TechAnalyticsPanel
             symbol={sym}
             exchange={exchangeLabel}
+            sector={sectorLabel}
             snapshotText={(latestSnap?.cleaned_text ?? latestSnap?.text ?? "").slice(0, 4000)}
             latestHeadline={
               signalSource?.agent_what_changed

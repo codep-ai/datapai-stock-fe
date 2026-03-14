@@ -111,7 +111,10 @@ async function parseSseStream(
 
 const TINYFISH_TIMEOUT_MS = 90_000; // 90s max per fetch — prevents hung scans
 
-async function callTinyFish(url: string): Promise<PageContent> {
+const DEFAULT_GOAL =
+  "Extract all visible text content from this page, including news releases, press releases, headlines, dates, and any company announcements. Return as structured data.";
+
+async function callTinyFish(url: string, goal?: string): Promise<PageContent> {
   const endpoint = `${BASE_URL}/v1/automation/run-sse`;
 
   const ctrl = new AbortController();
@@ -126,7 +129,7 @@ async function callTinyFish(url: string): Promise<PageContent> {
       },
       body: JSON.stringify({
         url,
-        goal: "Extract all visible text content from this page, including news releases, press releases, headlines, dates, and any company announcements. Return as structured data.",
+        goal: goal ?? DEFAULT_GOAL,
         proxy_config: { enabled: false },
       }),
       signal: ctrl.signal,
@@ -149,14 +152,23 @@ async function callTinyFish(url: string): Promise<PageContent> {
 
 // ─── Public entry point ───────────────────────────────────────────────────────
 
-export async function fetchPageText(url: string): Promise<PageContent> {
+/**
+ * Fetch page content via TinyFish browser automation.
+ *
+ * @param url   The URL to crawl
+ * @param goal  Optional extraction goal / prompt sent to TinyFish. When
+ *              omitted the default "extract all visible text" goal is used.
+ *              Supply a specific, structured goal for market intel use-cases
+ *              (e.g. "Extract top 15 news headlines with dates and summaries…").
+ */
+export async function fetchPageText(url: string, goal?: string): Promise<PageContent> {
   // All URLs — use TinyFish browser automation
   try {
-    return await callTinyFish(url);
+    return await callTinyFish(url, goal);
   } catch (err) {
     // Don't retry on timeout/abort — it would just hang again for another 90s
     if (err instanceof Error && err.name === "AbortError") throw err;
     console.warn(`TinyFish retry for ${url}:`, err);
-    return await callTinyFish(url);
+    return await callTinyFish(url, goal);
   }
 }

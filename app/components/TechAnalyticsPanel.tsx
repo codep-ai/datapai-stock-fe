@@ -52,9 +52,22 @@ interface FaResult {
   cached:             boolean;
 }
 
+interface MarketIntelResult {
+  intel_markdown:    string;
+  overall_stance:    string | null;   // BULLISH | NEUTRAL | BEARISH
+  macro_themes:      string[];
+  sector_themes:     string[];
+  ticker_catalysts:  string[];
+  black_swans:       string[];
+  cached:            boolean;
+  fetched_at:        string | null;
+}
+
 interface Props {
   symbol:   string;
   exchange: string;         // "ASX" | "US" | "NASDAQ" | "NYSE"
+  /** Sector for Market Intel (e.g. "Technology") */
+  sector?: string | null;
   /** Latest IR page snapshot text (used as announcement body for ASX signal) */
   snapshotText?: string;
   /** Latest scan headline/summary (used as headline for ASX signal) */
@@ -118,6 +131,27 @@ function faSignalBadge(signal: string | null) {
     <span
       className="inline-block px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wide"
       style={{ background: cfg.bg, color: cfg.color, border: `1.5px solid ${cfg.color}40` }}
+    >
+      {cfg.label}
+    </span>
+  );
+}
+
+// ── Market Intel stance badge ─────────────────────────────────────────────────
+
+function stanceBadge(stance: string | null) {
+  if (!stance) return null;
+  const map: Record<string, { bg: string; color: string; border: string; label: string }> = {
+    BULLISH:  { bg: "#d1fae5", color: "#065f46", border: "#4ade80",  label: "🐂 BULLISH" },
+    NEUTRAL:  { bg: "#fffbea", color: "#92400e", border: "#fbbf24",  label: "⚖️ NEUTRAL" },
+    BEARISH:  { bg: "#fee2e2", color: "#991b1b", border: "#fca5a5",  label: "🐻 BEARISH" },
+  };
+  const key = stance.toUpperCase();
+  const cfg = map[key] ?? { bg: "#f3f4f6", color: "#6b7280", border: "#d1d5db", label: stance };
+  return (
+    <span
+      className="inline-block px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wide"
+      style={{ background: cfg.bg, color: cfg.color, border: `1.5px solid ${cfg.border}` }}
     >
       {cfg.label}
     </span>
@@ -218,6 +252,7 @@ function ChartModal({
 export default function TechAnalyticsPanel({
   symbol,
   exchange,
+  sector,
   snapshotText,
   latestHeadline,
   lang = "en",
@@ -322,6 +357,43 @@ export default function TechAnalyticsPanel({
   const [faResult, setFaResult] = useState<FaResult | null>(null);
   const [faError, setFaError]   = useState<string>("");
   const [faExpanded, setFaExpanded] = useState(true);
+
+  // ── Market Intelligence state ─────────────────────────────────────────────
+  const [miPhase, setMiPhase] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [miResult, setMiResult] = useState<MarketIntelResult | null>(null);
+  const [miError, setMiError]   = useState<string>("");
+  const [miExpanded, setMiExpanded] = useState(true);
+
+  async function runMarketIntel(force = false) {
+    setMiPhase("loading");
+    setMiResult(null);
+    setMiError("");
+    try {
+      const params = new URLSearchParams({ exchange });
+      if (sector) params.set("sector", sector);
+      if (force)  params.set("fresh", "1");
+      const res = await fetch(
+        `/api/ticker/${symbol}/market-intel?${params}`,
+        { signal: AbortSignal.timeout(180_000) }   // TinyFish × 3 + LLM synthesis ≤ 3 min
+      );
+      let json: { ok?: boolean; data?: MarketIntelResult; error?: string | { message?: string } };
+      try {
+        json = await res.json();
+      } catch {
+        throw new Error(`Server returned non-JSON (HTTP ${res.status}). Agent backend may be starting — retry.`);
+      }
+      if (!res.ok || !json?.ok) {
+        const msg =
+          typeof json?.error === "object" ? json.error?.message : String(json?.error ?? `HTTP ${res.status}`);
+        throw new Error(msg || `HTTP ${res.status}`);
+      }
+      setMiResult(json.data as MarketIntelResult);
+      setMiPhase("done");
+    } catch (err) {
+      setMiError(String(err));
+      setMiPhase("error");
+    }
+  }
 
   async function runFaAnalysis() {
     setFaPhase("loading");
@@ -504,6 +576,26 @@ export default function TechAnalyticsPanel({
             )}
           </button>
 
+          {/* 🌐 Market Intelligence button — TinyFish live crawl + senior analyst synthesis */}
+          <button
+            onClick={miPhase === "idle" || miPhase === "error" ? () => runMarketIntel() : undefined}
+            disabled={miPhase === "loading"}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60"
+            style={{
+              background: miPhase === "done" ? "#ecfeff" : "#0891b2",
+              color:      miPhase === "done" ? "#0e7490" : "#fff",
+              border:     miPhase === "done" ? "1.5px solid #67e8f9" : "none",
+            }}
+          >
+            {miPhase === "loading" ? (
+              <><span className="animate-spin">⟳</span> Crawling Markets…</>
+            ) : miPhase === "done" ? (
+              "🌐 Market Intel ✓"
+            ) : (
+              "🌐 Market Intel"
+            )}
+          </button>
+
           {/* ASX Trading Signal button (ASX only) */}
           {isASX && (
             <div className="flex flex-col gap-1">
@@ -560,6 +652,14 @@ export default function TechAnalyticsPanel({
             <p className="text-gray-400 text-xs mt-1">Typically &lt;5 s — reading nightly-computed cache</p>
           </div>
         )}
+        {miPhase === "loading" && (
+          <div className="mt-4">
+            <Spinner label="TinyFish crawling Yahoo Finance markets + ticker news + sector pages…" />
+            <p className="text-gray-400 text-xs mt-1">
+              3 parallel TinyFish crawls → senior analyst LLM synthesis. Takes 60–120 s.
+            </p>
+          </div>
+        )}
 
         {/* Error messages */}
         {taPhase === "error" && (
@@ -580,6 +680,14 @@ export default function TechAnalyticsPanel({
                 Run: <code className="bg-gray-100 px-1 rounded">python3 scripts/compute_fundamental_daily.py --exchange {exchange} --tickers {symbol}</code>
               </p>
             )}
+          </div>
+        )}
+        {miPhase === "error" && (
+          <div className="mt-3">
+            <p className="text-red-400 text-sm">⚠ Market Intel failed: {miError}</p>
+            <p className="text-xs text-gray-400 mt-1">
+              TinyFish may be rate-limiting or the Python backend is offline. Try again in a moment.
+            </p>
           </div>
         )}
       </div>
@@ -682,6 +790,98 @@ export default function TechAnalyticsPanel({
                 <span>→ P/E · Margins · FCF · Growth rates · Balance sheet</span>
                 <span>→ Gemini grounding (macro + geopolitical)</span>
                 <span>→ AI narrative summary</span>
+                <span className="ml-auto italic">{T("panel_not_advice")}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Market Intelligence result panel ────────────────────────────────── */}
+      {miPhase === "done" && miResult && (
+        <div
+          className="bg-white rounded-2xl shadow-sm overflow-hidden"
+          style={{ border: "2px solid #67e8f9" }}
+        >
+          {/* Collapsible header */}
+          <button
+            className="w-full px-8 py-5 flex items-center justify-between border-b text-left hover:bg-cyan-50/50 transition-colors"
+            style={{ borderBottomColor: "#a5f3fc" }}
+            onClick={() => setMiExpanded(!miExpanded)}
+          >
+            <div className="flex items-center gap-4 flex-wrap">
+              <h2 className="text-2xl font-bold text-[#252525]">🌐 Market Intelligence</h2>
+              {stanceBadge(miResult.overall_stance)}
+              {miResult.cached && (
+                <span className="text-xs text-gray-400 font-medium">cached</span>
+              )}
+              {miResult.fetched_at && (
+                <span className="text-gray-400 text-xs">
+                  {new Date(miResult.fetched_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              )}
+            </div>
+            <span className="text-gray-400 text-sm">{miExpanded ? T("panel_collapse") : T("panel_expand")}</span>
+          </button>
+
+          {miExpanded && (
+            <div className="px-8 py-6">
+              {/* Quick summary bullets if available */}
+              {(miResult.macro_themes.length > 0 || miResult.black_swans.length > 0) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  {miResult.macro_themes.length > 0 && (
+                    <div
+                      className="rounded-xl p-4"
+                      style={{ background: "#f0f9ff", border: "1px solid #bae6fd" }}
+                    >
+                      <p className="text-xs font-bold text-sky-700 uppercase tracking-wide mb-2">🌍 Macro Themes</p>
+                      <ul className="space-y-1">
+                        {miResult.macro_themes.slice(0, 4).map((t, i) => (
+                          <li key={i} className="text-xs text-sky-900 flex gap-1.5">
+                            <span className="text-sky-400 flex-shrink-0">•</span>
+                            <span>{t}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {miResult.black_swans.length > 0 && (
+                    <div
+                      className="rounded-xl p-4"
+                      style={{ background: "#fff1f2", border: "1px solid #fecdd3" }}
+                    >
+                      <p className="text-xs font-bold text-red-700 uppercase tracking-wide mb-2">🦢 Black Swans</p>
+                      <ul className="space-y-1">
+                        {miResult.black_swans.slice(0, 4).map((t, i) => (
+                          <li key={i} className="text-xs text-red-900 flex gap-1.5">
+                            <span className="text-red-400 flex-shrink-0">•</span>
+                            <span>{t}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Full analyst note */}
+              <div className="text-sm text-gray-700 leading-relaxed">
+                <SimpleMarkdown>{miResult.intel_markdown}</SimpleMarkdown>
+              </div>
+
+              {/* Refresh + data provenance */}
+              <div className="mt-5 pt-4 border-t border-gray-100 flex items-center gap-2 flex-wrap text-xs text-gray-300">
+                <span
+                  className="font-bold text-cyan-600 cursor-pointer hover:text-cyan-700"
+                  onClick={() => runMarketIntel(true)}
+                  title="Re-crawl live data"
+                >
+                  🌊 TinyFish live crawl
+                </span>
+                <span>→ Yahoo Finance Markets (macro)</span>
+                <span>→ Yahoo Finance {symbol} News</span>
+                {sector && <span>→ Yahoo Finance {sector} Sector</span>}
+                <span>→ Senior analyst LLM synthesis</span>
                 <span className="ml-auto italic">{T("panel_not_advice")}</span>
               </div>
             </div>
