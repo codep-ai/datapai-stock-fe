@@ -42,6 +42,16 @@ interface ChartResult {
   indicators: Record<string, number | string | null>;
 }
 
+interface FaResult {
+  signal_markdown:    string;
+  fundamental_signal: string | null;
+  fundamental_score:  number | null;
+  company_name:       string | null;
+  sector:             string | null;
+  computed_at:        string | null;
+  cached:             boolean;
+}
+
 interface Props {
   symbol:   string;
   exchange: string;         // "ASX" | "US" | "NASDAQ" | "NYSE"
@@ -90,6 +100,28 @@ function signalBadge(markdown: string) {
       {raw}
     </span>
   ) : null;
+}
+
+// ── FA fundamental signal badge ───────────────────────────────────────────────
+
+function faSignalBadge(signal: string | null) {
+  if (!signal) return null;
+  const map: Record<string, { bg: string; color: string; label: string }> = {
+    STRONG_BUY:  { bg: "#d1fae5", color: "#065f46", label: "STRONG BUY ↑↑" },
+    BUY:         { bg: "#ecfdf5", color: "#047857", label: "BUY ↑" },
+    NEUTRAL:     { bg: "#fffbea", color: "#92400e", label: "NEUTRAL →" },
+    SELL:        { bg: "#fff1f2", color: "#be123c", label: "SELL ↓" },
+    STRONG_SELL: { bg: "#fee2e2", color: "#991b1b", label: "STRONG SELL ↓↓" },
+  };
+  const cfg = map[signal] ?? { bg: "#f3f4f6", color: "#6b7280", label: signal.replace(/_/g, " ") };
+  return (
+    <span
+      className="inline-block px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wide"
+      style={{ background: cfg.bg, color: cfg.color, border: `1.5px solid ${cfg.color}40` }}
+    >
+      {cfg.label}
+    </span>
+  );
 }
 
 // ─── Quick indicator pill ─────────────────────────────────────────────────────
@@ -285,6 +317,38 @@ export default function TechAnalyticsPanel({
   const [asxError, setAsxError]   = useState<string>("");
   const [asxExpanded, setAsxExpanded] = useState(true);
 
+  // ── FA Fundamental Analysis state ────────────────────────────────────────
+  const [faPhase, setFaPhase] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [faResult, setFaResult] = useState<FaResult | null>(null);
+  const [faError, setFaError]   = useState<string>("");
+  const [faExpanded, setFaExpanded] = useState(true);
+
+  async function runFaAnalysis() {
+    setFaPhase("loading");
+    setFaResult(null);
+    setFaError("");
+    try {
+      const res = await fetch(
+        `/api/ticker/${symbol}/fa-signal?exchange=${encodeURIComponent(exchange)}`,
+        { signal: AbortSignal.timeout(30_000) }
+      );
+      let json: { ok?: boolean; data?: FaResult; error?: string };
+      try {
+        json = await res.json();
+      } catch {
+        throw new Error(`Server returned non-JSON (HTTP ${res.status}). Agent backend may be starting — retry.`);
+      }
+      if (!res.ok || !json?.ok) {
+        throw new Error(String(json?.error ?? `HTTP ${res.status}`));
+      }
+      setFaResult(json.data as FaResult);
+      setFaPhase("done");
+    } catch (err) {
+      setFaError(String(err));
+      setFaPhase("error");
+    }
+  }
+
   async function runAsxSignal() {
     setAsxPhase("loading");
     setAsxResult(null);
@@ -420,6 +484,26 @@ export default function TechAnalyticsPanel({
             )}
           </button>
 
+          {/* Fundamental Analysis button */}
+          <button
+            onClick={faPhase === "idle" || faPhase === "error" ? runFaAnalysis : undefined}
+            disabled={faPhase === "loading"}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60"
+            style={{
+              background: faPhase === "done" ? "#fff7ed" : "#f59e0b",
+              color:      faPhase === "done" ? "#b45309" : "#fff",
+              border:     faPhase === "done" ? "1.5px solid #fbbf24" : "none",
+            }}
+          >
+            {faPhase === "loading" ? (
+              <><span className="animate-spin">⟳</span> Loading FA…</>
+            ) : faPhase === "done" ? (
+              "📊 Fundamentals ✓"
+            ) : (
+              "📊 Fundamental Analysis"
+            )}
+          </button>
+
           {/* ASX Trading Signal button (ASX only) */}
           {isASX && (
             <div className="flex flex-col gap-1">
@@ -470,6 +554,12 @@ export default function TechAnalyticsPanel({
             <p className="text-gray-400 text-xs mt-1">{T("panel_asx_time")}</p>
           </div>
         )}
+        {faPhase === "loading" && (
+          <div className="mt-4">
+            <Spinner label="Reading fundamental snapshot → valuation · quality · growth · macro context…" />
+            <p className="text-gray-400 text-xs mt-1">Typically &lt;5 s — reading nightly-computed cache</p>
+          </div>
+        )}
 
         {/* Error messages */}
         {taPhase === "error" && (
@@ -480,6 +570,17 @@ export default function TechAnalyticsPanel({
         )}
         {asxPhase === "error" && (
           <p className="mt-3 text-red-400 text-sm">⚠ ASX Signal failed: {asxError}</p>
+        )}
+        {faPhase === "error" && (
+          <div className="mt-3">
+            <p className="text-amber-500 text-sm">⚠ Fundamental Analysis: {faError}</p>
+            {faError.includes("No fundamental data") && (
+              <p className="text-xs text-gray-400 mt-1">
+                Fundamental data is computed nightly. This ticker may not have been processed yet.
+                Run: <code className="bg-gray-100 px-1 rounded">python3 scripts/compute_fundamental_daily.py --exchange {exchange} --tickers {symbol}</code>
+              </p>
+            )}
+          </div>
         )}
       </div>
 
@@ -546,6 +647,45 @@ export default function TechAnalyticsPanel({
           <div className="p-0">
             {chatSlot}
           </div>
+        </div>
+      )}
+
+      {/* ── Fundamental Analysis result panel ───────────────────────────────── */}
+      {faPhase === "done" && faResult && (
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+          <button
+            className="w-full px-8 py-5 flex items-center justify-between border-b border-gray-100 text-left hover:bg-gray-50 transition-colors"
+            onClick={() => setFaExpanded(!faExpanded)}
+          >
+            <div className="flex items-center gap-4 flex-wrap">
+              <h2 className="text-2xl font-bold text-[#252525]">📊 Fundamental Analysis</h2>
+              {faSignalBadge(faResult.fundamental_signal)}
+              {faResult.fundamental_score !== null && (
+                <span className="text-gray-500 text-sm font-medium tabular-nums">
+                  Score: {faResult.fundamental_score.toFixed(3)}
+                </span>
+              )}
+              {faResult.computed_at && (
+                <span className="text-gray-400 text-xs">Updated {faResult.computed_at.slice(0, 10)}</span>
+              )}
+            </div>
+            <span className="text-gray-400 text-sm">{faExpanded ? T("panel_collapse") : T("panel_expand")}</span>
+          </button>
+          {faExpanded && (
+            <div className="px-8 py-6">
+              <div className="text-sm text-gray-700 leading-relaxed">
+                <SimpleMarkdown>{faResult.signal_markdown}</SimpleMarkdown>
+              </div>
+              {/* Data provenance trail */}
+              <div className="mt-5 pt-4 border-t border-gray-100 flex items-center gap-2 flex-wrap text-xs text-gray-300">
+                <span className="font-semibold text-amber-600">yfinance</span>
+                <span>→ P/E · Margins · FCF · Growth rates · Balance sheet</span>
+                <span>→ Gemini grounding (macro + geopolitical)</span>
+                <span>→ AI narrative summary</span>
+                <span className="ml-auto italic">{T("panel_not_advice")}</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

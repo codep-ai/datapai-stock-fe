@@ -2,7 +2,10 @@
  * /ticker/[symbol]/intel  —  AI analysis page for a specific stock
  *
  * Green hero (consistent with all other pages), light main content.
- * Shows all 3 AI features via TechAnalyticsPanel with full width.
+ * Shows all 3 AI features via TechAnalyticsPanel with full width:
+ *   1. Technical Signal  (TA — RSI/MACD/Bollinger/EMA)
+ *   2. Chart Vision      (Gemini Vision chart pattern recognition)
+ *   3. Fundamental Analysis (FA — valuation, cashflow, macro, investment thesis)
  * Signals are pre-warmed by the scan pipeline; otherwise generated on demand.
  */
 
@@ -10,7 +13,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { UNIVERSE_ALL } from "@/lib/universe";
 import { getTickerSnapshots, getLatestAnalysisWithAgentContent, lookupStock, getCachedTaSignal } from "@/lib/db";
-import { resolveTickerUrl } from "@/lib/scan-pipeline";
 import { getLang } from "@/lib/getLang";
 import { t } from "@/lib/translations";
 import TechAnalyticsPanel from "../../../components/TechAnalyticsPanel";
@@ -29,7 +31,7 @@ export async function generateMetadata({
   const ticker = UNIVERSE_ALL.find((t) => t.symbol === sym);
   return {
     title: `${sym} AI analysis — TinyFish × DataP.ai`,
-    description: `Real-time AI technical signal, chart vision and trading analysis for ${ticker?.name ?? sym}.`,
+    description: `Real-time AI technical signal, chart vision and fundamental analysis for ${ticker?.name ?? sym}.`,
   };
 }
 
@@ -136,9 +138,11 @@ export default async function IntelPage({
         </div>
       </div>
 
-      {/* ── Main content (light, consistent with other pages) ─────────────── */}
+      {/* ── Main content ──────────────────────────────────────────────────────── */}
       <div className="min-h-screen bg-[#fcfcfd]">
         <div className="max-w-5xl mx-auto px-8 py-10">
+
+          {/* ── All 3 AI features: TA Signal · Chart Vision · Fundamental Analysis */}
           <TechAnalyticsPanel
             symbol={sym}
             exchange={exchangeLabel}
@@ -159,6 +163,7 @@ export default async function IntelPage({
               />
             }
           />
+
         </div>
 
         {/* Bottom nav between stocks */}
