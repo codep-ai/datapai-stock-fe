@@ -257,7 +257,7 @@ export function buildProfileContext(profile: InvestorProfile): string {
  * e.g. "Aggressive · Growth + Momentum · US+ASX"
  */
 export function profileSummaryLine(profile: InvestorProfile): string {
-  const parts = [profile.risk_tolerance];
+  const parts: string[] = [profile.risk_tolerance];
   if (profile.strategies?.length) parts.push(profile.strategies.slice(0, 2).join("+"));
   if (profile.preferred_exchanges?.length) parts.push(profile.preferred_exchanges.join("+"));
   return parts.join(" · ");
