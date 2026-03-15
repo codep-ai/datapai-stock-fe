@@ -743,3 +743,21 @@ export async function upsertChartAnalysis(row: Omit<ChartAnalysisRow, "id">): Pr
      row.indicators_json, row.generated_at, row.expires_at]
   );
 }
+
+// ── User scan log (daily quota) ───────────────────────────────────────────────
+
+export async function logUserScan(userId: string, symbol: string): Promise<void> {
+  await exec(
+    `INSERT INTO datapai.user_scan_log (user_id, symbol) VALUES ($1, $2)`,
+    [userId, symbol.toUpperCase()]
+  );
+}
+
+export async function getUserScanCountToday(userId: string): Promise<number> {
+  const rows = await q<{ cnt: string }>(
+    `SELECT COUNT(*)::text AS cnt FROM datapai.user_scan_log
+     WHERE user_id = $1 AND scanned_at >= date_trunc('day', now() AT TIME ZONE 'UTC')`,
+    [userId]
+  );
+  return parseInt(rows[0]?.cnt ?? "0", 10);
+}

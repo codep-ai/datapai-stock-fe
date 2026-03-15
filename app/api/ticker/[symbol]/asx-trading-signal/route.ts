@@ -14,6 +14,8 @@
  */
 
 import { NextResponse } from "next/server";
+import { getAuthUser } from "@/lib/auth";
+import { checkAiSignalAccess } from "@/lib/plan-limits";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 180; // Yahoo Finance + Gemini (grounded) + GPT reviewer
@@ -26,6 +28,22 @@ export async function POST(
 ) {
   const { symbol: rawSymbol } = await params;
   const symbol = rawSymbol.toUpperCase();
+
+  // ── 0. Auth + plan check ──────────────────────────────────────────────────
+  const authUser = await getAuthUser();
+  if (!authUser) {
+    return NextResponse.json(
+      { error: "Sign in to access AI signals", upgradeUrl: "/login" },
+      { status: 401 }
+    );
+  }
+  const access = await checkAiSignalAccess(authUser.userId);
+  if (!access.allowed) {
+    return NextResponse.json(
+      { error: access.message, upgradeUrl: "/pricing" },
+      { status: 403 }
+    );
+  }
 
   if (!AGENT_BASE) {
     return NextResponse.json(
