@@ -299,17 +299,28 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* Nav buttons */}
+          {/* Nav buttons — Previous left, Next right (standard wizard pattern) */}
           <div className="flex items-center justify-between mt-6">
-            <button type="button" onClick={handleSkip}
-              className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
-              Skip for now
-            </button>
-            <div className="flex gap-3">
-              {step > 1 && (
-                <button type="button" onClick={() => setStep(s => s - 1)}
-                  className="px-5 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all">
-                  ← Back
+            {/* Left: Previous (step 2+) or Skip (step 1) */}
+            {step > 1 ? (
+              <button type="button" onClick={() => setStep(s => s - 1)}
+                className="flex items-center gap-1.5 px-5 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all">
+                ← Previous
+              </button>
+            ) : (
+              <button type="button" onClick={handleSkip}
+                className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
+                Skip for now
+              </button>
+            )}
+
+            {/* Right: Next / Save */}
+            <div className="flex items-center gap-3">
+              {/* Show Skip on steps 2–6 as a smaller secondary option */}
+              {step > 1 && step < TOTAL && (
+                <button type="button" onClick={handleSkip}
+                  className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
+                  Skip setup
                 </button>
               )}
               <button type="button" onClick={handleNext}
