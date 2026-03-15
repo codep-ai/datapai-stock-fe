@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ASX_UNIVERSE } from "@/lib/universe";
-import { getAlertSummaryMap, getRecentRuns } from "@/lib/db";
+import { getAlertSummaryMap, getRecentRuns, getScannedTickerSet } from "@/lib/db";
 import LiveScanProgress from "../components/LiveScanProgress";
 import TickerSearch from "../components/TickerSearch";
 import WatchlistButton from "../components/WatchlistButton";
@@ -9,8 +9,11 @@ import WatchlistButton from "../components/WatchlistButton";
 export const dynamic = "force-dynamic";
 
 export default async function AsxPage() {
-  const alertMap = await getAlertSummaryMap();
-  const recentRuns = await getRecentRuns(3);
+  const [alertMap, scannedSet, recentRuns] = await Promise.all([
+    getAlertSummaryMap(),
+    getScannedTickerSet(),
+    getRecentRuns(3),
+  ]);
   const lastRun = recentRuns[0] ?? null;
   const asxAlertCount = ASX_UNIVERSE.filter((t) => !!alertMap[t.symbol]).length;
 
@@ -89,6 +92,7 @@ export default async function AsxPage() {
             {ASX_UNIVERSE.map((t) => {
               const analysis = alertMap[t.symbol];
               const hasAlert = !!analysis;
+              const hasSnapshot = scannedSet.has(t.symbol);
               const confidence = analysis?.confidence ?? 0;
 
               return (
@@ -131,7 +135,12 @@ export default async function AsxPage() {
                         </div>
                       </div>
                     )}
-                    {!hasAlert && (
+                    {!hasAlert && hasSnapshot && (
+                      <div className="mt-2">
+                        <span className="text-xs text-gray-400">✓ Baseline saved</span>
+                      </div>
+                    )}
+                    {!hasAlert && !hasSnapshot && (
                       <div className="mt-2">
                         <span className="text-xs text-gray-300">Not yet scanned</span>
                       </div>
@@ -150,7 +159,7 @@ export default async function AsxPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {[
               { step: "1", label: "TinyFish Fetches ASX", desc: "Real-browser agent reads the ASX announcements feed for each monitored company" },
-              { step: "2", label: "DataP.ai Cleans", desc: "Removes boilerplate, hashes announcement content, stores versioned snapshots in SQLite" },
+              { step: "2", label: "DataP.ai Cleans", desc: "Removes boilerplate, hashes announcement content, stores versioned snapshots in Postgres" },
               { step: "3", label: "Diff & Score", desc: "Detects new announcements, wording changes and language shifts in corporate disclosures" },
               { step: "4", label: "DataP.ai Financial Agents", desc: "Multi-agent pipeline: guidance withdrawal, risk expansion, tone shift — with investigation & validation" },
             ].map((item) => (

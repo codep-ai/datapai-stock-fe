@@ -5,6 +5,12 @@
  *
  * Comprehensive UX with full explanations of every filter, score, and column.
  * Helps users answer: "Which stocks are fundamentally attractive right now?"
+ *
+ * Profile integration:
+ *  - On mount: loads investor profile screener_defaults (preferred exchange,
+ *    sector, min score, etc.) and pre-fills the filter controls.
+ *  - After each run: saves the current filter state back to screener_defaults
+ *    so the next visit remembers the last choices.
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -215,6 +221,62 @@ export default function ScreenerPage() {
   const [error,   setError]   = useState<string | null>(null);
   const [ran,     setRan]     = useState(false);
 
+  // ── Load screener defaults from investor profile ─────────────────────────
+  useEffect(() => {
+    (async () => {
+      try {
+        const res  = await fetch("/api/profile");
+        const json = await res.json() as {
+          ok: boolean;
+          profile?: {
+            preferred_exchanges?: string[];
+            screener_defaults?: {
+              exchange?: string;
+              signal?:   string;
+              sector?:   string;
+              minScore?: string;
+              maxRisk?:  string;
+              limit?:    number;
+            };
+          };
+        };
+        if (!json.ok || !json.profile) return;
+        const p  = json.profile;
+        const sd = p.screener_defaults ?? {};
+        // Apply profile exchange preference if no screener default saved
+        if (sd.exchange)        setExchange(sd.exchange);
+        else if (p.preferred_exchanges?.[0]) setExchange(p.preferred_exchanges[0]);
+        if (sd.signal   != null) setSignal(sd.signal);
+        if (sd.sector   != null) setSector(sd.sector);
+        if (sd.minScore != null) setMinScore(sd.minScore);
+        if (sd.maxRisk  != null) setMaxRisk(sd.maxRisk);
+        if (sd.limit    != null) setLimit(sd.limit);
+      } catch { /* no profile — use defaults */ }
+    })();
+  }, []);
+
+  // ── Save screener state back to profile after each run ───────────────────
+  const saveScreenerDefaults = useCallback(async (
+    ex: string, sig: string, sec: string, min: string, risk: string, lim: number
+  ) => {
+    try {
+      await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          screener_defaults: {
+            exchange:  ex,
+            signal:    sig,
+            sector:    sec,
+            minScore:  min,
+            maxRisk:   risk,
+            limit:     lim,
+          },
+        }),
+      });
+    } catch { /* non-fatal — profile save failure shouldn't break screener */ }
+  }, []);
+
   const runScreener = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -230,6 +292,8 @@ export default function ScreenerPage() {
       if (json.ok) {
         setRows(json.data ?? []);
         setRan(true);
+        // Persist filter choices to profile (fire-and-forget)
+        saveScreenerDefaults(exchange, signal, sector, minScore, maxRisk, limit);
       } else {
         setError(json.error ?? "Screener request failed");
       }
@@ -238,7 +302,7 @@ export default function ScreenerPage() {
     } finally {
       setLoading(false);
     }
-  }, [exchange, signal, sector, minScore, maxRisk, limit]);
+  }, [exchange, signal, sector, minScore, maxRisk, limit, saveScreenerDefaults]);
 
   // Auto-run on first load with defaults
   useEffect(() => {

@@ -36,7 +36,7 @@ export default function RegisterPage() {
       if (!res.ok) {
         setError(data.error ?? "Registration failed");
       } else {
-        router.push("/watchlist");
+        router.push("/profile/onboarding");
         router.refresh();
       }
     } catch {
@@ -53,7 +53,7 @@ export default function RegisterPage() {
         <div className="text-center mb-8">
           <div className="text-5xl mb-3">⭐</div>
           <h1 className="text-3xl font-bold text-[#252525]">Create account</h1>
-          <p className="text-gray-500 mt-2">Build your personal stock watchlist</p>
+          <p className="text-gray-500 mt-2">Create your account — then set up your investor profile in 60 seconds</p>
         </div>
 
         {/* Form */}

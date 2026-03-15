@@ -3,7 +3,8 @@
  *
  * Proxies to Python /agent/stock-chat.
  * Passes: ticker, exchange, message, conversation history,
- *         user_id, lang, ta_signal_md (if cached), snapshot_text.
+ *         user_id, lang, ta_signal_md (if cached), snapshot_text,
+ *         profile_context (investor profile block for LLM system prompt).
  *
  * This is the gateway between the Next.js chat UI and the
  * datapai-streamlit stock_chat module.
@@ -12,6 +13,7 @@
 import { NextResponse } from "next/server";
 import { UNIVERSE_ALL } from "@/lib/universe";
 import { getAuthUser } from "@/lib/auth";
+import { getInvestorProfileOrDefault, buildProfileContext } from "@/lib/investorProfile";
 
 export const dynamic    = "force-dynamic";
 export const maxDuration = 60;
@@ -51,27 +53,41 @@ export async function POST(
   const tickerInfo = UNIVERSE_ALL.find((t) => t.symbol === symbol);
   const exchange   = tickerInfo?.exchange ?? "US";
 
-  // Get authenticated user ID (fallback 0 for anonymous)
-  let userId = 0;
+  // Get authenticated user — load investor profile for personalised AI responses
+  let userId      = 0;          // legacy int for Python session history key
+  let userUuid    = "";          // TEXT UUID for new profile table
+  let profileCtx  = "";          // multi-line investor profile block
+  let effectiveLang = body.lang ?? "en";
+
   try {
     const user = await getAuthUser();
-    if (user?.userId) userId = parseInt(user.userId, 10) || 0;
-  } catch { /* anonymous */ }
+    if (user?.userId) {
+      userUuid = user.userId;
+      userId   = parseInt(user.userId, 10) || 0;   // best-effort for legacy key
+      const profile = await getInvestorProfileOrDefault(user.userId);
+      profileCtx    = buildProfileContext(profile);
+      // Honour profile language unless the client explicitly overrides
+      if (!body.lang && profile.preferred_lang) {
+        effectiveLang = profile.preferred_lang;
+      }
+    }
+  } catch { /* anonymous — profile context stays empty */ }
 
   try {
     const res = await fetch(`${AGENT_BASE}/agent/stock-chat`, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({
-        ticker:       symbol,
+        ticker:          symbol,
         exchange,
         message,
-        user_id:      userId,
-        session_id:   body.session_id ?? null,
-        new_session:  body.new_session ?? false,
-        lang:         body.lang ?? "en",
-        ta_signal_md: body.ta_signal_md ?? null,
-        snapshot_text:body.snapshot_text ?? null,
+        user_id:         userId,
+        session_id:      body.session_id ?? null,
+        new_session:     body.new_session ?? false,
+        lang:            effectiveLang,
+        ta_signal_md:    body.ta_signal_md ?? null,
+        snapshot_text:   body.snapshot_text ?? null,
+        profile_context: profileCtx || null,
       }),
       signal: AbortSignal.timeout(55_000),
     });
