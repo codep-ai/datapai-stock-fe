@@ -140,30 +140,30 @@ export default async function IntelPage({
             </Link>
           </div>
           {/* Analysis type quick-access row */}
-          <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 1fr" }}>
+          <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 1fr", justifyItems: "start" }}>
             <Link
-              href={`/ticker/${sym}/intel`}
+              href={`/ticker/${sym}/intel?run=ta`}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white uppercase tracking-wide text-sm shadow-md transition-all hover:brightness-110 hover:-translate-y-0.5"
               style={{ background: "#fd8412" }}
             >
               📈 Technical Analysis (TA)
             </Link>
             <Link
-              href={`/ticker/${sym}/intel`}
+              href={`/ticker/${sym}/intel?run=fa`}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white uppercase tracking-wide text-sm shadow-md transition-all hover:brightness-110 hover:-translate-y-0.5"
               style={{ background: "#fd8412" }}
             >
               📊 Fundamental Analysis (FA)
             </Link>
             <Link
-              href={`/ticker/${sym}/intel`}
+              href={`/ticker/${sym}/intel?run=ma`}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white uppercase tracking-wide text-sm shadow-md transition-all hover:brightness-110 hover:-translate-y-0.5"
               style={{ background: "#fd8412" }}
             >
               🌐 Market Analysis (MA)
             </Link>
             <Link
-              href={`/ticker/${sym}/intel`}
+              href={`/ticker/${sym}/intel?run=ca`}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white uppercase tracking-wide text-sm shadow-md transition-all hover:brightness-110 hover:-translate-y-0.5"
               style={{ background: "#fd8412" }}
             >

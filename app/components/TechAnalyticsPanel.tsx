@@ -19,7 +19,8 @@
  * All calls are on-demand (button click) — no data is pre-fetched.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import SimpleMarkdown from "./SimpleMarkdown";
 import { t as tFn, type Lang } from "@/lib/translations";
 
@@ -364,6 +365,17 @@ export default function TechAnalyticsPanel({
   const [miResult, setMiResult] = useState<MarketIntelResult | null>(null);
   const [miError, setMiError]   = useState<string>("");
   const [miExpanded, setMiExpanded] = useState(true);
+
+  // ── Auto-run from ?run=ta|fa|ma|ca query param ───────────────────────────
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const run = searchParams.get("run");
+    if (run === "ta") runTaSignal();
+    else if (run === "fa") runFaAnalysis();
+    else if (run === "ma") runMarketIntel();
+    else if (run === "ca") runChartAnalysis();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function runMarketIntel(force = false) {
     setMiPhase("loading");
