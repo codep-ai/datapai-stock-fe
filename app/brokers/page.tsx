@@ -192,6 +192,15 @@ export default async function BrokersPage({
                         >
                           Visit site ↗
                         </a>
+                        <a
+                          href={b.signupUrl}
+                          target="_blank"
+                          rel="noopener noreferrer nofollow"
+                          className="text-[10px] font-semibold px-2 py-0.5 rounded transition-opacity hover:opacity-80"
+                          style={{ background: "#fd8412", color: "white" }}
+                        >
+                          Open account →
+                        </a>
                       </div>
                       {b.note && (
                         <div className="text-[11px] text-gray-400 mt-1 italic">
