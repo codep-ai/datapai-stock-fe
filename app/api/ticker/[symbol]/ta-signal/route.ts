@@ -16,6 +16,8 @@
 import { NextResponse } from "next/server";
 import { UNIVERSE_ALL } from "@/lib/universe";
 import { getCachedTaSignal, upsertTaSignal } from "@/lib/db";
+import { getAuthUser } from "@/lib/auth";
+import { checkAiSignalAccess } from "@/lib/plan-limits";
 
 export const dynamic    = "force-dynamic";
 export const maxDuration = 120;
@@ -31,6 +33,22 @@ export async function POST(
   const symbol    = rawSymbol.toUpperCase();
   const url       = new URL(req.url);
   const skipCache = url.searchParams.has("fresh") || url.searchParams.has("force");
+
+  // ── 0. Auth + plan check ──────────────────────────────────────────────────
+  const authUser = await getAuthUser();
+  if (!authUser) {
+    return NextResponse.json(
+      { ok: false, data: null, error: { code: "UNAUTHORIZED", message: "Sign in to access AI signals", upgradeUrl: "/login" } },
+      { status: 401 }
+    );
+  }
+  const access = await checkAiSignalAccess(authUser.userId);
+  if (!access.allowed) {
+    return NextResponse.json(
+      { ok: false, data: null, error: { code: "PLAN_LIMIT", message: access.message, upgradeUrl: "/pricing" } },
+      { status: 403 }
+    );
+  }
 
   // Parse body — lang drives cache bypass and Python prompt language
   let lang = "en";

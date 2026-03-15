@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getWatchlist, addToWatchlist, getAlertSummaryMap } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
 import { UNIVERSE_ALL } from "@/lib/universe";
+import { checkWatchlistLimit } from "@/lib/plan-limits";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,12 @@ export async function POST(req: NextRequest) {
 
   if (!symbol) {
     return NextResponse.json({ error: "symbol is required" }, { status: 400 });
+  }
+
+  // Enforce plan watchlist quota
+  const quota = await checkWatchlistLimit(user.userId);
+  if (!quota.allowed) {
+    return NextResponse.json({ error: quota.message, upgradeUrl: "/pricing" }, { status: 403 });
   }
 
   const sym = symbol.toUpperCase();

@@ -16,7 +16,9 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { UNIVERSE_ALL } from "@/lib/universe";
 import { scanTicker, resolveTickerUrl, AGENT_ENABLED } from "@/lib/scan-pipeline";
-import { insertRun, startRun, finishRun, failRun, lookupStock, getTickerSnapshots } from "@/lib/db";
+import { insertRun, startRun, finishRun, failRun, lookupStock, getTickerSnapshots, logUserScan } from "@/lib/db";
+import { getAuthUser } from "@/lib/auth";
+import { checkScanLimit } from "@/lib/plan-limits";
 
 // Internal base URL so AI cache pre-warming calls stay on localhost.
 const INTERNAL_BASE = `http://localhost:${process.env.PORT ?? "3085"}`;
@@ -78,7 +80,7 @@ async function runSingleTickerAsync(
     await startRun(runId);
 
     const ticker = { symbol, name, url, exchange: exchange as "NASDAQ" | "NYSE" | "ASX" };
-    const result = await scanTicker(ticker, runId);
+    const result = await scanTicker(ticker, runId, { force: true });
 
     await finishRun(runId, new Date().toISOString(), {
       scanned: 1,
@@ -106,6 +108,32 @@ export async function POST(
 ) {
   const { symbol: rawSymbol } = await params;
   const symbol = rawSymbol.toUpperCase();
+
+  // ── 0. Auth + plan check ──────────────────────────────────────────────────
+  // Internal server-side calls (cron, rescan scripts) bypass user auth by
+  // supplying the X-Internal-Token header matching INTERNAL_API_SECRET env var.
+  const internalSecret = process.env.INTERNAL_API_SECRET;
+  const internalToken  = (req as Request & { headers: Headers }).headers.get("x-internal-token");
+  const isInternal     = internalSecret && internalToken === internalSecret;
+
+  if (!isInternal) {
+    const authUser = await getAuthUser();
+    if (!authUser) {
+      return NextResponse.json(
+        { error: "Sign in to run on-demand scans", upgradeUrl: "/login" },
+        { status: 401 }
+      );
+    }
+    const scanCheck = await checkScanLimit(authUser.userId);
+    if (!scanCheck.allowed) {
+      return NextResponse.json(
+        { error: scanCheck.message, upgradeUrl: "/pricing" },
+        { status: 403 }
+      );
+    }
+    // Log against user's daily quota
+    logUserScan(authUser.userId, symbol).catch(() => {});
+  }
 
   // Parse optional body (may be empty)
   let bodyUrl: string | undefined;
