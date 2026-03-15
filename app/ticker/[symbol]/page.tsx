@@ -289,30 +289,30 @@ export default async function TickerPage({
             <Link
               href={`/ticker/${sym}/intel`}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white uppercase tracking-wide text-sm shadow-md transition-all hover:brightness-110 hover:-translate-y-0.5"
-              style={{ background: "#2e8b57" }}
+              style={{ background: "#fd8412" }}
             >
               📈 Technical Analysis (TA)
             </Link>
             <Link
               href={`/ticker/${sym}/intel`}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white uppercase tracking-wide text-sm shadow-md transition-all hover:brightness-110 hover:-translate-y-0.5"
-              style={{ background: "#d97706" }}
+              style={{ background: "#fd8412" }}
             >
               📊 Fundamental Analysis (FA)
             </Link>
             <Link
               href={`/ticker/${sym}/intel`}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white uppercase tracking-wide text-sm shadow-md transition-all hover:brightness-110 hover:-translate-y-0.5"
-              style={{ background: "#6366f1" }}
+              style={{ background: "#fd8412" }}
             >
-              💬 Chart Analysis (CA)
+              🌐 Market Analysis (MA)
             </Link>
             <Link
               href={`/ticker/${sym}/intel`}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white uppercase tracking-wide text-sm shadow-md transition-all hover:brightness-110 hover:-translate-y-0.5"
-              style={{ background: "#0891b2" }}
+              style={{ background: "#fd8412" }}
             >
-              🌐 Market Analysis (MA)
+              💬 Chart Analysis (CA)
             </Link>
           </div>
         </div>

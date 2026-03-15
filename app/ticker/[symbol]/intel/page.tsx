@@ -119,7 +119,7 @@ export default async function IntelPage({
             </span>
           </div>
 
-          {/* CTAs */}
+          {/* CTAs row 1 */}
           <div className="flex items-center gap-3 flex-wrap pt-1">
             <WatchlistButton symbol={sym} exchange={exchangeLabel} name={companyName} />
             <Link
@@ -137,6 +137,37 @@ export default async function IntelPage({
               style={{ background: "#fd8412", color: "#fff" }}
             >
               {t(lang, "stock_cta_report")}
+            </Link>
+          </div>
+          {/* Analysis type quick-access row */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <Link
+              href={`/ticker/${sym}/intel`}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white uppercase tracking-wide text-sm shadow-md transition-all hover:brightness-110 hover:-translate-y-0.5"
+              style={{ background: "#fd8412" }}
+            >
+              📈 Technical Analysis (TA)
+            </Link>
+            <Link
+              href={`/ticker/${sym}/intel`}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white uppercase tracking-wide text-sm shadow-md transition-all hover:brightness-110 hover:-translate-y-0.5"
+              style={{ background: "#fd8412" }}
+            >
+              📊 Fundamental Analysis (FA)
+            </Link>
+            <Link
+              href={`/ticker/${sym}/intel`}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white uppercase tracking-wide text-sm shadow-md transition-all hover:brightness-110 hover:-translate-y-0.5"
+              style={{ background: "#fd8412" }}
+            >
+              🌐 Market Analysis (MA)
+            </Link>
+            <Link
+              href={`/ticker/${sym}/intel`}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white uppercase tracking-wide text-sm shadow-md transition-all hover:brightness-110 hover:-translate-y-0.5"
+              style={{ background: "#fd8412" }}
+            >
+              💬 Chart Analysis (CA)
             </Link>
           </div>
         </div>
