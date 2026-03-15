@@ -315,7 +315,7 @@ export default function ScreenerPage() {
       {/* ── Hero ─────────────────────────────────────────────────────────────── */}
       <div
         className="w-full"
-        style={{ background: "linear-gradient(45deg, #1a6e3e, #2e8b57)", paddingTop: "32px", paddingBottom: "36px" }}
+        style={{ background: "linear-gradient(45deg, seagreen, darkseagreen)", paddingTop: "32px", paddingBottom: "36px" }}
       >
         <div className="max-w-6xl mx-auto px-8 space-y-4">
           <div className="flex items-end gap-4 flex-wrap">
