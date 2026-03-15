@@ -591,9 +591,9 @@ export default function TechAnalyticsPanel({
             {miPhase === "loading" ? (
               <><span className="animate-spin">⟳</span> Crawling Markets…</>
             ) : miPhase === "done" ? (
-              "🌐 Market Intel ✓"
+              "🌐 MA ✓"
             ) : (
-              "🌐 Market Intel"
+              "🌐 Market Analysis (MA)"
             )}
           </button>
 
@@ -667,7 +667,7 @@ export default function TechAnalyticsPanel({
           <p className="mt-3 text-red-400 text-sm">⚠ TA Signal failed: {taError}</p>
         )}
         {chartPhase === "error" && (
-          <p className="mt-3 text-red-400 text-sm">⚠ Chart Vision failed: {chartError}</p>
+          <p className="mt-3 text-red-400 text-sm">⚠ Chart Analysis (CA) failed: {chartError}</p>
         )}
         {asxPhase === "error" && (
           <p className="mt-3 text-red-400 text-sm">⚠ ASX Signal failed: {asxError}</p>
@@ -685,7 +685,7 @@ export default function TechAnalyticsPanel({
         )}
         {miPhase === "error" && (
           <div className="mt-3">
-            <p className="text-red-400 text-sm">⚠ Market Intel failed: {miError}</p>
+            <p className="text-red-400 text-sm">⚠ Market Analysis (MA) failed: {miError}</p>
             <p className="text-xs text-gray-400 mt-1">
               TinyFish may be rate-limiting or the Python backend is offline. Try again in a moment.
             </p>
@@ -811,7 +811,7 @@ export default function TechAnalyticsPanel({
             onClick={() => setMiExpanded(!miExpanded)}
           >
             <div className="flex items-center gap-4 flex-wrap">
-              <h2 className="text-2xl font-bold text-[#252525]">🌐 Market Intelligence</h2>
+              <h2 className="text-2xl font-bold text-[#252525]">🌐 Market Analysis (MA)</h2>
               {stanceBadge(miResult.overall_stance)}
               {miResult.cached && (
                 <span className="text-xs text-gray-400 font-medium">cached</span>
