@@ -165,7 +165,7 @@ export default function AlertsClient({ contentOnly, allSignals, universe, watchl
         style={{ background: "linear-gradient(45deg, seagreen, darkseagreen)", paddingTop: "28px", paddingBottom: "28px" }}
       >
         <div className="max-w-6xl mx-auto px-6 space-y-3">
-          {/* Row 1: title + filter toggles */}
+          {/* Row 1: title */}
           <div className="flex items-center gap-4 flex-wrap">
             {watchlistOnly && (
               <Link href="/watchlist" className="text-white/70 hover:text-white text-sm font-medium">
@@ -175,13 +175,15 @@ export default function AlertsClient({ contentOnly, allSignals, universe, watchl
             <h1 className="text-2xl font-bold text-white">
               {watchlistOnly ? "⭐ My Watchlist Alerts" : "Change Alerts"}
             </h1>
-            {/* Signal filter toggles — inside hero */}
+          </div>
+          {/* Row 2: filter toggles (yellow/orange, clickable) */}
+          <div className="flex items-center gap-3 flex-wrap">
             <button
               onClick={() => setShowAll(false)}
-              className="px-5 py-1.5 rounded-lg text-sm font-semibold transition-all"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold uppercase tracking-wide text-sm shadow-md transition-all hover:brightness-110 hover:-translate-y-0.5"
               style={
                 !showAll
-                  ? { background: "rgba(255,255,255,0.9)", color: "#2e8b57" }
+                  ? { background: "#fd8412", color: "#fff" }
                   : { background: "rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.85)" }
               }
             >
@@ -189,10 +191,10 @@ export default function AlertsClient({ contentOnly, allSignals, universe, watchl
             </button>
             <button
               onClick={() => setShowAll(true)}
-              className="px-5 py-1.5 rounded-lg text-sm font-semibold transition-all"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold uppercase tracking-wide text-sm shadow-md transition-all hover:brightness-110 hover:-translate-y-0.5"
               style={
                 showAll
-                  ? { background: "rgba(255,255,255,0.9)", color: "#2e8b57" }
+                  ? { background: "#fd8412", color: "#fff" }
                   : { background: "rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.85)" }
               }
             >
@@ -204,26 +206,25 @@ export default function AlertsClient({ contentOnly, allSignals, universe, watchl
               </span>
             )}
           </div>
-          {/* Row 2: stats badges */}
+          {/* Row 3: stats (read-only info labels) */}
           <div className="flex items-center gap-2 flex-wrap">
             {changed > 0 && (
-              <span className="text-sm font-bold px-4 py-1.5 rounded-full"
-                style={{ background: "#fd8412", color: "#fff" }}>
+              <span className="text-sm text-white/80">
                 {changed} with changes
               </span>
             )}
             {highConf > 0 && (
-              <span className="text-sm font-semibold px-4 py-1.5 rounded-full bg-white/20 text-white">
-                {highConf} high-confidence
+              <span className="text-sm text-white/70">
+                · {highConf} high-confidence
               </span>
             )}
             {withAgentSignal > 0 && (
-              <span className="text-sm font-semibold px-4 py-1.5 rounded-full bg-white/20 text-white">
-                {withAgentSignal} AG2 signal{withAgentSignal !== 1 ? "s" : ""}
+              <span className="text-sm text-white/70">
+                · {withAgentSignal} AG2 signal{withAgentSignal !== 1 ? "s" : ""}
               </span>
             )}
             {withInvestigation > 0 && (
-              <span className="text-sm font-semibold px-4 py-1.5 rounded-full bg-white/20 text-white">
+              <span className="text-sm text-white/70">
                 🔎 {withInvestigation} investigated
               </span>
             )}
