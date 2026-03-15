@@ -95,18 +95,45 @@ const TIERS: Tier[] = [
 
 // ─── Competitor comparison ────────────────────────────────────────────────────
 
-const COMPARE_ROWS = [
-  { feature: "Live ASX / US price data",          tinyfish: true,  marketIndex: true,  bloomberg: true  },
-  { feature: "Technical indicators (RSI, MACD…)", tinyfish: true,  marketIndex: true,  bloomberg: true  },
-  { feature: "Broker consensus ratings",           tinyfish: false, marketIndex: true,  bloomberg: true  },
-  { feature: "IR page language change detection", tinyfish: true,  marketIndex: false, bloomberg: false },
-  { feature: "AI signal pipeline (6 agents)",     tinyfish: true,  marketIndex: false, bloomberg: false },
-  { feature: "Noise filter (content vs layout)",  tinyfish: true,  marketIndex: false, bloomberg: false },
-  { feature: "Investigation agent (corroboration)", tinyfish: true, marketIndex: false, bloomberg: false },
-  { feature: "Gemini Vision chart analysis",       tinyfish: true,  marketIndex: false, bloomberg: false },
-  { feature: "ASX Trading Signal (IR + price)",   tinyfish: true,  marketIndex: false, bloomberg: false },
-  { feature: "REST API access",                    tinyfish: true,  marketIndex: false, bloomberg: true  },
-  { feature: "Price (entry)",                      tinyfish: "Free", marketIndex: "Free", bloomberg: "~$24k/yr" },
+type CompareValue = boolean | string;
+interface CompareRow {
+  feature: string;
+  note?: string;
+  tinyfish: CompareValue;
+  simplyWallSt: CompareValue;
+  bloomberg: CompareValue;
+  highlight?: boolean;   // rows where TF uniquely wins
+}
+
+const COMPARE_ROWS: CompareRow[] = [
+  // ── Standard features (all tools have these) ──────────────────────────────
+  { feature: "Live US / ASX price data",            tinyfish: true,   simplyWallSt: true,   bloomberg: true  },
+  { feature: "Technical indicators (RSI, MACD…)",   tinyfish: true,   simplyWallSt: true,   bloomberg: true  },
+  { feature: "Broker consensus & price targets",    tinyfish: true,   simplyWallSt: true,   bloomberg: true,
+    note: "TF via Gemini grounding · refreshed nightly" },
+  { feature: "Fundamental scoring (valuation / quality / growth)",
+                                                    tinyfish: true,   simplyWallSt: true,   bloomberg: true,
+    note: "TF adds macro + geopolitical dimension" },
+  // ── Differentiators ───────────────────────────────────────────────────────
+  { feature: "Macro & geopolitical risk scoring",   tinyfish: true,   simplyWallSt: false,  bloomberg: "News only",
+    highlight: true, note: "Fed / ECB / tariffs / supply-chain — AI-scored per sector" },
+  { feature: "IR page language change detection",   tinyfish: true,   simplyWallSt: false,  bloomberg: false,
+    highlight: true },
+  { feature: "Real-browser JS rendering of IR pages", tinyfish: true, simplyWallSt: false,  bloomberg: false,
+    highlight: true, note: "TinyFish headless browser — dynamic content not missed" },
+  { feature: "AI signal pipeline (6 agents)",       tinyfish: true,   simplyWallSt: false,  bloomberg: false,
+    highlight: true, note: "Forward Guidance · Risk · Tone · Quality · Investigation · Validation" },
+  { feature: "Noise filter (content vs layout)",    tinyfish: true,   simplyWallSt: false,  bloomberg: false,
+    highlight: true },
+  { feature: "Investigation agent (corroboration)", tinyfish: true,   simplyWallSt: false,  bloomberg: false,
+    highlight: true, note: "Probes press releases + exchange filings to confirm signals" },
+  { feature: "Gemini Vision chart analysis",        tinyfish: true,   simplyWallSt: false,  bloomberg: false,
+    highlight: true },
+  { feature: "ASX Trading Signal (IR + price)",     tinyfish: true,   simplyWallSt: false,  bloomberg: false,
+    highlight: true, note: "Unique: IR language + live multi-timeframe TA → BUY/HOLD/SELL" },
+  { feature: "REST API + webhooks",                 tinyfish: true,   simplyWallSt: false,  bloomberg: true  },
+  // ── Price ─────────────────────────────────────────────────────────────────
+  { feature: "Price (entry)",                       tinyfish: "Free", simplyWallSt: "Free", bloomberg: "~$24k/yr" },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -243,12 +270,12 @@ export default function PricingPage() {
         <div>
           <h2 className="text-3xl font-bold text-[#252525] mb-2">What you&apos;re actually buying</h2>
           <p className="text-gray-400 mb-10 max-w-2xl">
-            Market Index gives you price data and broker consensus. Bloomberg gives you everything at
-            enterprise cost. TinyFish × DataP.ai gives you the one layer neither provides — early
-            warning from language change on company websites.
+            Simply Wall St gives you fundamental scores and broker consensus. Bloomberg gives you
+            everything at enterprise cost. TinyFish × DataP.ai is the only platform that reads what
+            companies quietly change on their websites — before it moves the stock price.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
             {[
               {
                 icon: "🌊",
@@ -259,6 +286,11 @@ export default function PricingPage() {
                 icon: "🤖",
                 title: "6-agent AI pipeline",
                 desc: "Forward Guidance · Risk Disclosure · Tone Shift · Signal Quality · Investigation · Cross-Validation. Each agent adds a layer of signal fidelity.",
+              },
+              {
+                icon: "📊",
+                title: "Fundamental + macro scoring",
+                desc: "AI-computed valuation, quality, growth, and macro/geopolitical scores — refreshed nightly from yfinance + Gemini grounding across Reuters, FT, WSJ, IMF sources.",
               },
               {
                 icon: "🎯",
@@ -277,18 +309,24 @@ export default function PricingPage() {
 
         {/* ── Comparison table ─────────────────────────────────────────────── */}
         <div>
-          <h2 className="text-3xl font-bold text-[#252525] mb-8">How we compare</h2>
+          <h2 className="text-3xl font-bold text-[#252525] mb-2">How we compare</h2>
+          <p className="text-gray-400 mb-8 max-w-2xl">
+            <span className="inline-flex items-center gap-1.5 text-[#2e8b57] font-semibold">
+              <span>★</span> Unique to TinyFish × DataP.ai
+            </span>
+            {" "}— features no other retail platform offers.
+          </p>
           <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
-                    <th className="text-left px-6 py-4 font-semibold text-gray-500 w-1/2">Feature</th>
+                  <tr style={{ background: "#f9fafb", borderBottom: "2px solid #e5e7eb" }}>
+                    <th className="text-left px-6 py-4 font-semibold text-gray-500" style={{ width: "42%" }}>Feature</th>
                     <th className="text-center px-4 py-4 font-bold text-[#2e8b57]">
                       TinyFish × DataP.ai
                     </th>
                     <th className="text-center px-4 py-4 font-semibold text-gray-400">
-                      Market Index
+                      Simply Wall St
                     </th>
                     <th className="text-center px-4 py-4 font-semibold text-gray-400">
                       Bloomberg
@@ -299,9 +337,24 @@ export default function PricingPage() {
                   {COMPARE_ROWS.map((row, i) => (
                     <tr
                       key={row.feature}
-                      style={{ borderBottom: i < COMPARE_ROWS.length - 1 ? "1px solid #f3f4f6" : "none" }}
+                      style={{
+                        borderBottom: i < COMPARE_ROWS.length - 1 ? "1px solid #f3f4f6" : "none",
+                        background: row.highlight ? "rgba(46,139,87,0.03)" : undefined,
+                      }}
                     >
-                      <td className="px-6 py-3.5 text-gray-700">{row.feature}</td>
+                      <td className="px-6 py-3.5">
+                        <div className="flex items-start gap-2">
+                          {row.highlight && (
+                            <span className="text-[#2e8b57] text-xs mt-0.5 flex-shrink-0">★</span>
+                          )}
+                          <div>
+                            <span className="text-gray-700 font-medium">{row.feature}</span>
+                            {row.note && (
+                              <div className="text-gray-400 text-xs mt-0.5">{row.note}</div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
                       <td className="text-center px-4 py-3.5">
                         {typeof row.tinyfish === "boolean" ? (
                           row.tinyfish ? (
@@ -314,14 +367,14 @@ export default function PricingPage() {
                         )}
                       </td>
                       <td className="text-center px-4 py-3.5">
-                        {typeof row.marketIndex === "boolean" ? (
-                          row.marketIndex ? (
+                        {typeof row.simplyWallSt === "boolean" ? (
+                          row.simplyWallSt ? (
                             <span className="text-gray-400 font-medium">✓</span>
                           ) : (
                             <span className="text-gray-300">—</span>
                           )
                         ) : (
-                          <span className="text-gray-500 text-sm">{row.marketIndex}</span>
+                          <span className="text-gray-500 text-sm">{row.simplyWallSt}</span>
                         )}
                       </td>
                       <td className="text-center px-4 py-3.5">
@@ -341,7 +394,7 @@ export default function PricingPage() {
               </table>
             </div>
           </div>
-          <p className="text-xs text-gray-300 mt-3 text-right">
+          <p className="text-xs text-gray-300 mt-3">
             Competitor data based on publicly available information · Mar 2026
           </p>
         </div>
@@ -360,8 +413,8 @@ export default function PricingPage() {
                 a: "9,000+ US-listed stocks (NYSE, NASDAQ, AMEX) and 2,000+ ASX-listed companies. The Pro plan covers 50 stocks of your choice; Signal Command covers the full universe.",
               },
               {
-                q: "How is this different from a broker consensus tool?",
-                a: "Broker ratings are backward-looking and often stale. Our signals come from the company's own website — the source of truth — captured in real time by TinyFish browser automation.",
+                q: "How is this different from Simply Wall St or a broker consensus tool?",
+                a: "Simply Wall St scores fundamentals from reported financials — backward-looking by definition. We add two layers they don't have: (1) real-time IR page language monitoring that catches guidance changes before they show up in financials, and (2) macro/geopolitical context scoring so you know whether the sector tailwind or headwind is priced in.",
               },
               {
                 q: "What is the ASX Trading Signal?",
