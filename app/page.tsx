@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { UNIVERSE } from "@/lib/universe";
-import { getAlertSummaryMap, getRecentRuns } from "@/lib/db";
+import { getAlertSummaryMap, getRecentRuns, getScannedTickerSet } from "@/lib/db";
 import LiveScanProgress from "./components/LiveScanProgress";
 import TickerSearch from "./components/TickerSearch";
 import WatchlistButton from "./components/WatchlistButton";
@@ -9,9 +9,12 @@ import WatchlistButton from "./components/WatchlistButton";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const alertMap = await getAlertSummaryMap();
+  const [alertMap, scannedSet, recentRuns] = await Promise.all([
+    getAlertSummaryMap(),
+    getScannedTickerSet(),
+    getRecentRuns(3),
+  ]);
   const alertCount = Object.keys(alertMap).length;
-  const recentRuns = await getRecentRuns(3);
   const lastRun = recentRuns[0] ?? null;
   return (
     <div>
@@ -106,6 +109,7 @@ export default async function Home() {
             {UNIVERSE.map((t) => {
               const analysis = alertMap[t.symbol];
               const hasAlert = !!analysis;
+              const hasSnapshot = scannedSet.has(t.symbol);
               const confidence = analysis?.confidence ?? 0;
 
               return (
@@ -154,6 +158,11 @@ export default async function Home() {
                         </div>
                       </div>
                     )}
+                    {!hasAlert && hasSnapshot && (
+                      <div className="mt-2">
+                        <span className="text-xs text-gray-400">✓ Baseline saved</span>
+                      </div>
+                    )}
                   </Link>
                 </div>
               );
@@ -176,7 +185,7 @@ export default async function Home() {
             </div>
             {/* Steps 2–4 */}
             {[
-              { step: "2", label: "DataP.ai Cleans", desc: "Removes nav/footer noise, hashes content, stores versioned snapshots in SQLite" },
+              { step: "2", label: "DataP.ai Cleans", desc: "Removes nav/footer noise, hashes content, stores versioned snapshots in Postgres" },
               { step: "3", label: "Diff & Score", desc: "Text diff detects wording shifts. Word-list scores measure commitment/hedging/risk" },
               { step: "4", label: "AI Signal", desc: "GPT/Gemini summary with direct quotes, confidence score, and price chart context" },
             ].map((item) => (

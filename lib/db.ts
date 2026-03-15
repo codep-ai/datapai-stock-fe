@@ -444,6 +444,12 @@ export async function getAlertSummaryMap(): Promise<Record<
   return Object.fromEntries(rows.map((r) => [r.ticker, r]));
 }
 
+/** Returns a set of tickers that have at least one snapshot saved (baseline exists). */
+export async function getScannedTickerSet(): Promise<Set<string>> {
+  const rows = await q<{ ticker: string }>(`SELECT DISTINCT ticker FROM datapai.snapshots`);
+  return new Set(rows.map((r) => r.ticker));
+}
+
 // ─── Scan event helpers ────────────────────────────────────────────────────
 
 export async function insertScanEvent(e: ScanEvent): Promise<void> {
