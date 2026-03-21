@@ -134,6 +134,26 @@ export default async function RootLayout({
 
         {/* Footer */}
         <footer style={{ background: "#252525" }} className="mt-16">
+          {/* ── Prominent Disclaimer Banner ── */}
+          <div style={{ background: "linear-gradient(90deg, #1a1a2e, #16213e)" }} className="border-t border-amber-500/30">
+            <div className="max-w-7xl mx-auto px-6 py-4">
+              <div className="flex items-start gap-3 bg-amber-950/40 border border-amber-500/20 rounded-xl px-5 py-4">
+                <span className="text-amber-400 text-xl flex-shrink-0 mt-0.5">&#9888;</span>
+                <div>
+                  <p className="text-amber-200 text-sm font-bold mb-1">Important Disclaimer</p>
+                  <p className="text-amber-100/80 text-xs leading-relaxed">
+                    All data, signals, scores, and AI-generated content on DataP.ai are for <strong className="text-amber-200">educational and informational purposes only</strong> and
+                    do <strong className="text-amber-200">NOT</strong> constitute financial advice, investment recommendations, or solicitation to buy or sell securities.
+                    Technical indicators are computed from historical price data and backtested against past performance —
+                    <strong className="text-amber-200"> past performance does not guarantee future results</strong>.
+                    Always conduct your own research and consult a qualified financial advisor before making investment decisions.
+                    DataP.ai and its operators are not responsible for any trading losses.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="max-w-7xl mx-auto px-6 py-8 flex flex-col items-center gap-4">
             <div className="flex items-center gap-6">
               <span className="bg-white rounded px-2 py-1 flex items-center">

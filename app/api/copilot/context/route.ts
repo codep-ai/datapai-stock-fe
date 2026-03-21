@@ -20,6 +20,43 @@ import {
 
 export const dynamic = "force-dynamic";
 
+const AGENT_BASE = (process.env.AGENT_BACKEND_BASE_URL ?? "").replace(/\/$/, "");
+
+/** Fetch screener highlights — top gainers, oversold, bullish momentum */
+async function fetchScreenerHighlights(): Promise<string[]> {
+  if (!AGENT_BASE) return [];
+  const highlights: string[] = [];
+  try {
+    const fmt = (r: Record<string, unknown>) => {
+      const p = Number(r.latest_close) || 0;
+      const d = Number(r.change_1d_pct) || 0;
+      const rsi = Number(r.rsi_14) || 0;
+      const macd = r.macd_trend ?? "—";
+      const vol = Number(r.volume_ratio) || 0;
+      return `${r.ticker} $${p.toFixed(2)} ${d >= 0 ? "+" : ""}${d.toFixed(2)}% RSI=${rsi.toFixed(0)} MACD=${macd} VolRatio=${vol.toFixed(1)}`;
+    };
+    // Quality filters: min_price=$1 for US (skip sub-$1 warrants/penny), min_volume_ratio=0.3 (active trading)
+    const [usGainRes, asxGainRes, usOversoldRes, usBullRes] = await Promise.all([
+      fetch(`${AGENT_BASE}/agent/technical-screener?exchange=US&min_price=1&min_volume_ratio=0.3&sort_by=change_1d_pct&sort_dir=desc&limit=10`, { cache: "no-store" }),
+      fetch(`${AGENT_BASE}/agent/technical-screener?exchange=ASX&sort_by=change_1d_pct&sort_dir=desc&limit=10`, { cache: "no-store" }),
+      fetch(`${AGENT_BASE}/agent/technical-screener?exchange=US&min_price=1&min_volume_ratio=0.3&max_rsi=30&sort_by=rsi_14&sort_dir=asc&limit=10`, { cache: "no-store" }),
+      fetch(`${AGENT_BASE}/agent/technical-screener?exchange=US&min_price=1&macd_trend=BULLISH&min_volume_ratio=1.5&sort_by=volume_ratio&sort_dir=desc&limit=10`, { cache: "no-store" }),
+    ]);
+    const [usGain, asxGain, usOv, usBull] = await Promise.all([
+      usGainRes.json(), asxGainRes.json(), usOversoldRes.json(), usBullRes.json(),
+    ]);
+    const usItems = usGain.data?.items ?? [];
+    const asxItems = asxGain.data?.items ?? [];
+    const usOvItems = usOv.data?.items ?? [];
+    const usBullItems = usBull.data?.items ?? [];
+    if (usItems.length > 0) highlights.push(`US Top 10 Gainers Today:\n${usItems.map(fmt).join("\n")}`);
+    if (asxItems.length > 0) highlights.push(`ASX Top 10 Gainers Today:\n${asxItems.map(fmt).join("\n")}`);
+    if (usOvItems.length > 0) highlights.push(`US Oversold (RSI<30) — potential bounce candidates:\n${usOvItems.map(fmt).join("\n")}`);
+    if (usBullItems.length > 0) highlights.push(`US MACD Bullish + High Volume — momentum stocks:\n${usBullItems.map(fmt).join("\n")}`);
+  } catch { /* screener unavailable */ }
+  return highlights;
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const page = searchParams.get("page") ?? "/";
@@ -127,13 +164,17 @@ export async function GET(req: Request) {
         return summary;
       });
 
+      // Also include screener highlights so copilot can recommend beyond watchlist
+      const screenerHighlights = await fetchScreenerHighlights();
+
       return Response.json({
         ok: true,
         data: {
           page_type: "watchlist",
-          description: `User's personal watchlist with ${watchlist.length} stocks. Includes live prices, news, and AI signals.`,
+          description: `User's personal watchlist with ${watchlist.length} stocks. Includes live prices, news, and AI signals. ALSO includes screener highlights from 8,500+ stocks — use these when user asks for buy recommendations beyond their watchlist.`,
           stock_count: watchlist.length,
           stocks: stockSummaries,
+          screener_highlights: screenerHighlights,
         },
       });
     }
@@ -200,12 +241,13 @@ export async function GET(req: Request) {
 
     // ── Screener page ────────────────────────────────────────────────────
     if (page === "/screener") {
+      const screenerSummary = await fetchScreenerHighlights();
       return Response.json({
         ok: true,
         data: {
           page_type: "screener",
-          description: "Stock screener page. Users can filter stocks by various criteria across US and ASX markets.",
-          total_stocks: UNIVERSE_ALL.length,
+          description: `Technical stock screener covering 8,500+ tickers (US + ASX). Pre-computed TA indicators: RSI, MACD, KDJ, SMA, Bollinger Bands, OBV, volume, volatility.`,
+          stocks: screenerSummary,
         },
       });
     }
@@ -222,11 +264,13 @@ export async function GET(req: Request) {
     }
 
     // ── Default / unknown page ───────────────────────────────────────────
+    const generalHighlights = await fetchScreenerHighlights();
     return Response.json({
       ok: true,
       data: {
         page_type: "general",
-        description: `DataP.ai website change intelligence platform. Page: ${page}. Covers ${UNIVERSE.length} US stocks and ${ASX_UNIVERSE.length} ASX stocks.`,
+        description: `DataP.ai website change intelligence platform. Page: ${page}. Covers ${UNIVERSE.length} US stocks and ${ASX_UNIVERSE.length} ASX stocks. Screener covers 8,500+ tickers with full TA.`,
+        screener_highlights: generalHighlights,
       },
     });
   } catch (err) {

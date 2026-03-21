@@ -44,7 +44,7 @@ const PAGE_SUGGESTIONS: Record<string, string[]> = {
     "Summarise my watchlist — which stocks need attention?",
     "Any breaking news or critical alerts for my stocks?",
     "Which of my watchlist stocks has the strongest technical setup?",
-    "What's the overall risk profile of my portfolio?",
+    "Beyond my watchlist, any good buy opportunities from the screener?",
   ],
   alerts: [
     "Explain the top alerts — what changed and why does it matter?",
@@ -61,18 +61,50 @@ const PAGE_SUGGESTIONS: Record<string, string[]> = {
     "What's the AI's overall view on this stock?",
     "Run me through the key chart patterns",
   ],
+  screener: [
+    "Which stocks have the strongest buy setup right now?",
+    "Show me oversold stocks with high volume — potential bounce plays",
+    "Compare the top US gainers vs ASX gainers today",
+    "Any stocks near 52-week lows with bullish MACD?",
+  ],
   general: [
-    "What is DataP.ai and how does it work?",
+    "Which stocks should I buy today based on the screener?",
     "Which stocks are showing the strongest signals today?",
-    "How does TinyFish technology power this platform?",
+    "Show me oversold US stocks with bullish momentum",
   ],
 };
 
 // ── Main component ───────────────────────────────────────────────────────────
 
+// ── sessionStorage helpers for persisting chat across full page reloads ──────
+const STORAGE_KEY = "datapai_copilot";
+
+function loadPersistedState(): { messages: Message[]; sessionId: string | null; open: boolean; minimised: boolean } {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return { messages: [], sessionId: null, open: false, minimised: false };
+    const parsed = JSON.parse(raw);
+    // Strip any pending messages from a previous interrupted stream
+    const msgs = (parsed.messages ?? []).filter((m: Message) => !m.pending);
+    return { messages: msgs, sessionId: parsed.sessionId ?? null, open: parsed.open ?? false, minimised: parsed.minimised ?? false };
+  } catch {
+    return { messages: [], sessionId: null, open: false, minimised: false };
+  }
+}
+
+function persistState(state: { messages: Message[]; sessionId: string | null; open: boolean; minimised: boolean }) {
+  try {
+    // Only persist non-pending messages
+    const msgs = state.messages.filter((m) => !m.pending);
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, messages: msgs }));
+  } catch { /* quota exceeded — ok */ }
+}
+
 export default function GlobalCopilot({ lang = "en" }: { lang?: string }) {
   const pathname = usePathname();
 
+  // Restore state from sessionStorage on mount
+  const [hydrated, setHydrated] = useState(false);
   const [open, setOpen]           = useState(false);
   const [messages, setMessages]   = useState<Message[]>([]);
   const [input, setInput]         = useState("");
@@ -82,6 +114,22 @@ export default function GlobalCopilot({ lang = "en" }: { lang?: string }) {
   const [pageCtx, setPageCtx]     = useState<PageContext | null>(null);
   const [ctxLoading, setCtxLoading] = useState(false);
   const [minimised, setMinimised] = useState(false);
+
+  // Hydrate from sessionStorage on first mount
+  useEffect(() => {
+    const saved = loadPersistedState();
+    if (saved.messages.length > 0) setMessages(saved.messages);
+    if (saved.sessionId)           setSessionId(saved.sessionId);
+    if (saved.open)                setOpen(saved.open);
+    if (saved.minimised)           setMinimised(saved.minimised);
+    setHydrated(true);
+  }, []);
+
+  // Persist to sessionStorage whenever key state changes
+  useEffect(() => {
+    if (!hydrated) return;
+    persistState({ messages, sessionId, open, minimised });
+  }, [messages, sessionId, open, minimised, hydrated]);
 
   // Track which page we last fetched context for
   const lastCtxPage = useRef<string>("");
@@ -141,6 +189,11 @@ export default function GlobalCopilot({ lang = "en" }: { lang?: string }) {
     if (pageCtx.alerts) {
       parts.push(`Active alerts:\n${(pageCtx.alerts as string[]).join("\n")}`);
     }
+    if (pageCtx.screener_highlights) {
+      if (Array.isArray(pageCtx.screener_highlights)) {
+        parts.push(`[SCREENER DATA — 8,500+ stocks scanned]\n${(pageCtx.screener_highlights as string[]).join("\n\n")}`);
+      }
+    }
     if (pageCtx.ta_signal) {
       parts.push(`Technical Analysis:\n${pageCtx.ta_signal}`);
     }
@@ -189,15 +242,9 @@ export default function GlobalCopilot({ lang = "en" }: { lang?: string }) {
       let gotFirstChunk = false;
       let finalModel    = "";
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        for (const line of lines) {
+      // Process SSE lines from a buffer string
+      function processLines(linesToProcess: string[]) {
+        for (const line of linesToProcess) {
           if (!line.startsWith("data: ")) continue;
           let event: Record<string, string>;
           try { event = JSON.parse(line.slice(6)); } catch { continue; }
@@ -237,6 +284,22 @@ export default function GlobalCopilot({ lang = "en" }: { lang?: string }) {
           }
         }
       }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        processLines(lines);
+      }
+
+      // Flush decoder and process any remaining buffer content
+      buffer += decoder.decode();
+      if (buffer.trim()) {
+        processLines(buffer.split("\n"));
+      }
     } catch (err) {
       setMessages((prev) => prev.slice(0, -1));
       setError(String(err));
@@ -257,6 +320,7 @@ export default function GlobalCopilot({ lang = "en" }: { lang?: string }) {
     setMessages([]);
     setSessionId(null);
     setError("");
+    try { sessionStorage.removeItem(STORAGE_KEY); } catch { /* ok */ }
   }
 
   const suggestions = PAGE_SUGGESTIONS[pageCtx?.page_type ?? "general"] ?? PAGE_SUGGESTIONS.general;

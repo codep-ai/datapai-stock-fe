@@ -1,24 +1,61 @@
 "use client";
 
 /**
- * /screener  —  Fundamental Analysis Screener
+ * /screener  —  Stock Screener (Technical + Fundamental tabs)
  *
- * Comprehensive UX with full explanations of every filter, score, and column.
- * Helps users answer: "Which stocks are fundamentally attractive right now?"
- *
- * Profile integration:
- *  - On mount: loads investor profile screener_defaults (preferred exchange,
- *    sector, min score, etc.) and pre-fills the filter controls.
- *  - After each run: saves the current filter state back to screener_defaults
- *    so the next visit remembers the last choices.
+ * Technical tab: screens 8,500+ tickers using pre-computed TA indicators
+ *   (SMA, RSI, MACD, KDJ, BB, Pivot Points, OBV, volume, volatility)
+ * Fundamental tab: screens ~30 tickers with AI fundamental scores
  */
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import WatchlistButton from "@/app/components/WatchlistButton";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface ScreenerRow {
+interface TechRow {
+  ticker: string;
+  exchange: string;
+  latest_close: number | null;
+  latest_volume: number | null;
+  trade_date: string | null;
+  change_1d_pct: number | null;
+  change_5d_pct: number | null;
+  change_1m_pct: number | null;
+  change_3m_pct: number | null;
+  change_6m_pct: number | null;
+  change_1y_pct: number | null;
+  high_52w: number | null;
+  low_52w: number | null;
+  pct_from_52w_high: number | null;
+  pct_from_52w_low: number | null;
+  sma_5: number | null;
+  sma_10: number | null;
+  sma_20: number | null;
+  sma_50: number | null;
+  sma_200: number | null;
+  price_vs_sma20_pct: number | null;
+  price_vs_sma50_pct: number | null;
+  price_vs_sma200_pct: number | null;
+  golden_cross: boolean | null;
+  death_cross: boolean | null;
+  rsi_14: number | null;
+  macd_line: number | null;
+  macd_signal: number | null;
+  macd_histogram: number | null;
+  macd_trend: string | null;
+  kdj_k: number | null;
+  kdj_d: number | null;
+  kdj_signal: string | null;
+  bb_pct_b: number | null;
+  obv_trend: string | null;
+  volume_ratio: number | null;
+  volatility_20d: number | null;
+  computed_at: string | null;
+}
+
+interface FundRow {
   ticker: string;
   exchange: string;
   company_name: string | null;
@@ -32,35 +69,50 @@ interface ScreenerRow {
   analyst_consensus: string | null;
   analyst_upside_pct: number | null;
   tech_disruption_risk: string | null;
-  computed_at: string | null;
 }
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
-const SIGNAL_OPTIONS = [
-  { value: "",            label: "All signals" },
-  { value: "STRONG_BUY",  label: "⬆⬆ STRONG BUY" },
-  { value: "BUY",         label: "⬆ BUY" },
-  { value: "NEUTRAL",     label: "→ NEUTRAL" },
-  { value: "SELL",        label: "⬇ SELL" },
-  { value: "STRONG_SELL", label: "⬇⬇ STRONG SELL" },
-];
+function pctCell(v: number | null) {
+  if (v === null || v === undefined) return <span className="text-gray-300">—</span>;
+  const color = v >= 0 ? "#15803d" : "#dc2626";
+  return (
+    <span className="text-xs font-semibold tabular-nums" style={{ color }}>
+      {v >= 0 ? "+" : ""}{v.toFixed(2)}%
+    </span>
+  );
+}
 
-const SECTOR_OPTIONS = [
-  "", "Technology", "Healthcare", "Financials", "Energy", "Materials",
-  "Consumer Discretionary", "Consumer Staples", "Industrials",
-  "Real Estate", "Utilities", "Communication Services",
-];
+function trendChip(trend: string | null) {
+  if (!trend) return <span className="text-gray-300 text-xs">—</span>;
+  const defaults: Record<string, { bg: string; text: string }> = {
+    BULLISH:    { bg: "#dcfce7", text: "#166534" },
+    BEARISH:    { bg: "#fef2f2", text: "#991b1b" },
+    UP:         { bg: "#dcfce7", text: "#166534" },
+    DOWN:       { bg: "#fef2f2", text: "#991b1b" },
+    FLAT:       { bg: "#f3f4f6", text: "#6b7280" },
+    OVERBOUGHT: { bg: "#fef2f2", text: "#991b1b" },
+    OVERSOLD:   { bg: "#dcfce7", text: "#166534" },
+    NEUTRAL:    { bg: "#f3f4f6", text: "#6b7280" },
+  };
+  const c = defaults[trend] ?? { bg: "#f3f4f6", text: "#6b7280" };
+  return (
+    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap"
+      style={{ background: c.bg, color: c.text }}>
+      {trend}
+    </span>
+  );
+}
 
-const MIN_SCORE_PRESETS = [
-  { value: "",     label: "Any score" },
-  { value: "0.5",  label: "≥ 0.5  — STRONG BUY territory" },
-  { value: "0.2",  label: "≥ 0.2  — BUY or better" },
-  { value: "0.0",  label: "≥ 0.0  — positive signals only" },
-  { value: "-0.2", label: "≥ −0.2 — exclude weak sells" },
-];
+function volFmt(v: number | null): string {
+  if (v === null || v === undefined) return "—";
+  if (v >= 1e9) return (v / 1e9).toFixed(1) + "B";
+  if (v >= 1e6) return (v / 1e6).toFixed(1) + "M";
+  if (v >= 1e3) return (v / 1e3).toFixed(0) + "K";
+  return v.toFixed(0);
+}
 
-// ── Badge / chip helpers ──────────────────────────────────────────────────────
+// ── Signal / Score helpers for fundamental tab ──────────────────────────────
 
 const SIGNAL_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   STRONG_BUY:  { bg: "#f0fdf4", text: "#15803d", border: "#4ade80" },
@@ -70,20 +122,12 @@ const SIGNAL_COLORS: Record<string, { bg: string; text: string; border: string }
   STRONG_SELL: { bg: "#fef2f2", text: "#991b1b", border: "#f87171" },
 };
 
-const RISK_COLORS: Record<string, { bg: string; text: string }> = {
-  LOW:    { bg: "#f0fdf4", text: "#166534" },
-  MEDIUM: { bg: "#fffbea", text: "#92400e" },
-  HIGH:   { bg: "#fef2f2", text: "#991b1b" },
-};
-
 function SignalChip({ signal }: { signal: string | null }) {
   if (!signal) return <span className="text-gray-300 text-sm">—</span>;
   const c = SIGNAL_COLORS[signal] ?? { bg: "#f9fafb", text: "#6b7280", border: "#d1d5db" };
   return (
-    <span
-      className="text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap"
-      style={{ background: c.bg, color: c.text, border: `1.5px solid ${c.border}` }}
-    >
+    <span className="text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap"
+      style={{ background: c.bg, color: c.text, border: `1.5px solid ${c.border}` }}>
       {signal.replace("_", " ")}
     </span>
   );
@@ -106,194 +150,285 @@ function ScoreBar({ value, range = [-1, 1] }: { value: number | null; range?: [n
   );
 }
 
-function RiskChip({ risk }: { risk: string | null }) {
-  if (!risk || risk === "UNKNOWN") return <span className="text-gray-300 text-xs">—</span>;
-  const c = RISK_COLORS[risk] ?? { bg: "#f9fafb", text: "#6b7280" };
+function RsiCell({ rsi }: { rsi: number | null }) {
+  if (rsi === null || rsi === undefined) return <span className="text-gray-300 text-xs">—</span>;
+  const color = rsi >= 70 ? "#dc2626" : rsi <= 30 ? "#15803d" : "#6b7280";
   return (
-    <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: c.bg, color: c.text }}>
-      {risk}
+    <span className="text-xs font-semibold tabular-nums" style={{ color }}>
+      {rsi.toFixed(0)}
     </span>
   );
 }
 
-// ── Score legend component ────────────────────────────────────────────────────
+/** RSI zone signal chip */
+function RsiSignal({ rsi }: { rsi: number | null }) {
+  if (rsi === null || rsi === undefined) return <span className="text-gray-300 text-xs">—</span>;
+  if (rsi >= 70) return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: "#fef2f2", color: "#991b1b" }}>OVERBOUGHT</span>;
+  if (rsi <= 30) return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: "#dcfce7", color: "#166534" }}>OVERSOLD</span>;
+  return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: "#f3f4f6", color: "#6b7280" }}>NEUTRAL</span>;
+}
 
-function ScoreLegend() {
-  const [open, setOpen] = useState(false);
+// ── Composite Buy / Hold / Sell signal for each timeframe ────────────────────
+
+type Signal = "BUY" | "SELL" | "HOLD";
+
+/**
+ * Short-term signals (Days/Weeks) model how real traders behave:
+ *   - BUY the dip (oversold, pulled back, bounce setup)
+ *   - SELL the rip (take profit after run-up, overbought → wait for correction)
+ *   - HOLD when not clear
+ *
+ * Key insight: SELL threshold is LOWER than BUY threshold for short-term,
+ * because taking profit is a defensive/conservative action (easier trigger),
+ * while new entries need stronger conviction.
+ *
+ * Long-term signals (Months/Quarter) are trend-following — use symmetric thresholds.
+ */
+
+function computeSignalShortTerm(votes: number[]): Signal {
+  const sum = votes.reduce((a, b) => a + b, 0);
+  if (sum >= 3) return "BUY";   // strong conviction needed to enter
+  if (sum <= -2) return "SELL";  // easier to take profit / exit (defensive)
+  return "HOLD";
+}
+
+function computeSignalLongTerm(votes: number[]): Signal {
+  const sum = votes.reduce((a, b) => a + b, 0);
+  if (sum >= 3) return "BUY";
+  if (sum <= -3) return "SELL";
+  return "HOLD";
+}
+
+/**
+ * Short-term (Days): Mean-reversion + momentum exhaustion model
+ *
+ * Real day-trader logic:
+ *   - Stock dropped 4%+ today with RSI<30? → BUY the dip (bounce play)
+ *   - Stock up 3%+ today with RSI>60? → SELL / take profit before pullback
+ *   - SMA cross alone isn't enough — price distance from SMA5 matters more
+ *
+ * 5 indicators, asymmetric threshold (BUY≥3, SELL≤-2):
+ */
+function signalDays(r: TechRow): Signal {
+  // v2 (backtest-validated): Buy on RSI RECOVERY (30-45), not while falling
+  const votes: number[] = [];
+  if (r.rsi_14 !== null) votes.push((r.rsi_14 >= 30 && r.rsi_14 <= 45) ? 1 : r.rsi_14 >= 65 ? -1 : 0);
+  if (r.macd_trend) votes.push(r.macd_trend === "BULLISH" ? 1 : r.macd_trend === "BEARISH" ? -1 : 0);
+  if (r.kdj_signal) votes.push(r.kdj_signal === "OVERSOLD" ? 1 : r.kdj_signal === "OVERBOUGHT" ? -1 : 0);
+  // Price pullback to SMA5 (not crash through it)
+  if (r.latest_close !== null && r.sma_5 !== null && r.sma_5 > 0) {
+    const ext = ((r.latest_close - r.sma_5) / r.sma_5) * 100;
+    votes.push(ext > 3 ? -1 : (ext >= -3 && ext <= -0.5) ? 1 : 0);
+  }
+  // Moderate dip = buy, big crash = stay away, big rip = sell
+  if (r.change_1d_pct !== null) votes.push(r.change_1d_pct > 3 ? -1 : (r.change_1d_pct >= -4 && r.change_1d_pct <= -1) ? 1 : 0);
+  return computeSignalShortTerm(votes);
+}
+
+/**
+ * Near-term (Weeks): Swing-trader profit-taking model
+ *
+ * Real swing-trader logic:
+ *   - Ran up 5%+ this week with BB near top? → SELL, take profit before mean reversion
+ *   - Dropped 5%+ this week with BB near bottom? → BUY, anticipate bounce
+ *   - Volume spike on down day = distribution → SELL
+ *
+ * 5 indicators, asymmetric threshold (BUY≥3, SELL≤-2):
+ */
+function signalWeeks(r: TechRow): Signal {
+  const votes: number[] = [];
+  // SMA10 vs SMA20 — weekly trend
+  if (r.sma_10 !== null && r.sma_20 !== null) votes.push(r.sma_10 > r.sma_20 ? 1 : -1);
+  // Bollinger %B: near top = take profit, near bottom = buy
+  if (r.bb_pct_b !== null) votes.push(r.bb_pct_b < 0.2 ? 1 : r.bb_pct_b > 0.8 ? -1 : 0);
+  // Volume spike: confirms direction (distribution vs accumulation)
+  if (r.volume_ratio !== null && r.change_1d_pct !== null) {
+    if (r.volume_ratio >= 2) votes.push(r.change_1d_pct >= 0 ? 1 : -1);
+    else votes.push(0);
+  }
+  // RSI for swing: sell at 65 (don't wait for 70)
+  if (r.rsi_14 !== null) votes.push(r.rsi_14 <= 35 ? 1 : r.rsi_14 >= 65 ? -1 : 0);
+  // 5D extension: up 5%+ this week = time to take profit, not enter
+  if (r.change_5d_pct !== null) votes.push(r.change_5d_pct > 5 ? -1 : r.change_5d_pct < -5 ? 1 : 0);
+  return computeSignalShortTerm(votes);
+}
+
+/**
+ * Medium-term (Months) v2 — backtest-validated:
+ * Added SMA50/200 trend-regime filter. Don't sell in confirmed uptrends.
+ * BUY jumped from 52.7% → 61.2% win rate at 60D after this change.
+ */
+function signalMonths(r: TechRow): Signal {
+  const votes: number[] = [];
+  if (r.sma_20 !== null && r.sma_50 !== null) votes.push(r.sma_20 > r.sma_50 ? 1 : -1);
+  if (r.change_1m_pct !== null) votes.push(r.change_1m_pct > 5 ? 1 : r.change_1m_pct < -5 ? -1 : 0);
+  if (r.obv_trend) votes.push(r.obv_trend === "UP" ? 1 : r.obv_trend === "DOWN" ? -1 : 0);
+  if (r.rsi_14 !== null) votes.push(r.rsi_14 <= 35 ? 1 : r.rsi_14 >= 65 ? -1 : 0);
+  if (r.change_3m_pct !== null) votes.push(r.change_3m_pct > 30 ? -1 : r.change_3m_pct < -30 ? 1 : 0);
+  // v2: Trend regime filter — golden cross makes SELL harder, death cross makes it easier
+  if (r.sma_50 !== null && r.sma_200 !== null) votes.push(r.sma_50 > r.sma_200 ? 1 : -1);
+  // v2: Stricter SELL threshold — need overwhelming bearish evidence (-4 of 6)
+  const sum = votes.reduce((a, b) => a + b, 0);
+  if (sum >= 3) return "BUY";
+  if (sum <= -4) return "SELL";
+  return "HOLD";
+}
+
+/**
+ * Long-term (Quarter+): Trend + institutional flow
+ * Symmetric threshold (BUY≥3, SELL≤-3):
+ */
+function signalQuarter(r: TechRow): Signal {
+  const votes: number[] = [];
+  if (r.sma_50 !== null && r.sma_200 !== null) votes.push(r.sma_50 > r.sma_200 ? 1 : -1);
+  if (r.pct_from_52w_high !== null) votes.push(r.pct_from_52w_high > -10 ? 1 : r.pct_from_52w_high < -30 ? -1 : 0);
+  if (r.change_6m_pct !== null) votes.push(r.change_6m_pct > 15 ? 1 : r.change_6m_pct < -15 ? -1 : 0);
+  if (r.change_1y_pct !== null) votes.push(r.change_1y_pct > 20 ? 1 : r.change_1y_pct < -20 ? -1 : 0);
+  if (r.obv_trend) votes.push(r.obv_trend === "UP" ? 1 : r.obv_trend === "DOWN" ? -1 : 0);
+  return computeSignalLongTerm(votes);
+}
+
+const SIGNAL_CHIP_STYLE: Record<Signal, { bg: string; color: string }> = {
+  BUY:  { bg: "#dcfce7", color: "#166534" },
+  SELL: { bg: "#fef2f2", color: "#991b1b" },
+  HOLD: { bg: "#fefce8", color: "#854d0e" },
+};
+
+function SignalCell({ signal }: { signal: Signal }) {
+  const s = SIGNAL_CHIP_STYLE[signal];
   return (
-    <div className="bg-[#f8fafc] border border-gray-200 rounded-xl overflow-hidden">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-gray-100 transition-colors"
-      >
-        <span className="text-sm font-semibold text-gray-600 flex items-center gap-2">
-          📖 How AI scores work — what do these numbers mean?
-        </span>
-        <span className="text-gray-400 text-sm">{open ? "▲ hide" : "▼ show"}</span>
-      </button>
-      {open && (
-        <div className="px-5 pb-5 border-t border-gray-100 pt-4 space-y-4">
-          <p className="text-sm text-gray-600">
-            Each stock is scored nightly using <strong>yfinance data + Gemini grounding</strong> across four dimensions.
-            The composite score answers: <em>&quot;Is this stock fundamentally attractive right now?&quot;</em>
-          </p>
+    <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full whitespace-nowrap"
+      style={{ background: s.bg, color: s.color }}>
+      {signal}
+    </span>
+  );
+}
 
-          {/* Composite score */}
-          <div className="bg-white rounded-lg border border-gray-100 p-4">
-            <p className="text-sm font-bold text-gray-700 mb-2">🎯 Composite Score (−1.0 to +1.0)</p>
-            <p className="text-xs text-gray-500 mb-3">
-              Weighted average: <code className="bg-gray-100 px-1 rounded">0.35 × Val + 0.30 × Qual + 0.20 × Growth + 0.15 × Macro</code>
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { label: "STRONG BUY", range: "≥ 0.5", bg: "#f0fdf4", text: "#15803d", border: "#4ade80" },
-                { label: "BUY",        range: "≥ 0.2", bg: "#f0fdf4", text: "#166534", border: "#86efac" },
-                { label: "NEUTRAL",    range: "> −0.2", bg: "#f9fafb", text: "#6b7280", border: "#d1d5db" },
-                { label: "SELL",       range: "> −0.5", bg: "#fff7ed", text: "#c2410c", border: "#fb923c" },
-                { label: "STRONG SELL",range: "≤ −0.5", bg: "#fef2f2", text: "#991b1b", border: "#f87171" },
-              ].map(({ label, range, bg, text, border }) => (
-                <span key={label} className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-semibold"
-                  style={{ background: bg, color: text, border: `1.5px solid ${border}` }}>
-                  {label} <span className="font-normal opacity-70">{range}</span>
-                </span>
+/** Single SMA cross cell — shows bullish/bearish chip */
+function SmaCrossCell({ fast, slow, label }: { fast: number | null; slow: number | null; label: string }) {
+  if (fast === null || slow === null) return <span className="text-gray-300 text-[9px]">—</span>;
+  const bullish = fast > slow;
+  const pctDiff = ((fast - slow) / slow) * 100;
+  return (
+    <span
+      className="text-[9px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap"
+      style={{
+        background: bullish ? "#dcfce7" : "#fef2f2",
+        color: bullish ? "#166534" : "#991b1b",
+      }}
+      title={`SMA${label}: ${bullish ? "Bullish" : "Bearish"} (${pctDiff >= 0 ? "+" : ""}${pctDiff.toFixed(1)}%)`}
+    >
+      {bullish ? "▲ Bull" : "▼ Bear"}
+    </span>
+  );
+}
+
+// ── Sortable table header ──────────────────────────────────────────────────
+
+function Th({ label, col, sortBy, sortDir, onClick, align = "left", tip }: {
+  label: string; col: string; sortBy: string; sortDir: string;
+  onClick: (col: string) => void; align?: string; tip?: string;
+}) {
+  const active = sortBy === col;
+  const arrow = active ? (sortDir === "desc" ? " ↓" : " ↑") : "";
+  return (
+    <th className={`px-2 py-2 font-bold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-gray-700 whitespace-nowrap`}
+      style={{ textAlign: align as "left" | "right" | "center" }}
+      title={tip}
+      onClick={() => onClick(col)}>
+      {label}{arrow}
+    </th>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Main Page
+// ══════════════════════════════════════════════════════════════════════════════
+
+export default function ScreenerPage() {
+  const [tab, setTab] = useState<"technical" | "fundamental">("technical");
+
+  return (
+    <div>
+      {/* Tab bar */}
+      <div className="w-full" style={{ background: "linear-gradient(45deg, seagreen, darkseagreen)" }}>
+        <div className="max-w-7xl mx-auto px-8 pt-6 pb-0">
+          <div className="flex items-end gap-6">
+            <h1 className="text-3xl font-bold text-white drop-shadow-sm pb-3"
+              style={{ fontFamily: "var(--font-rajdhani)" }}>
+              Stock Screener
+            </h1>
+            <div className="flex gap-1 mb-0">
+              {(["technical", "fundamental"] as const).map((t) => (
+                <button key={t} onClick={() => setTab(t)}
+                  className="px-5 py-2.5 text-sm font-semibold rounded-t-lg transition-all"
+                  style={tab === t
+                    ? { background: "#fff", color: "#2e8b57" }
+                    : { background: "rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.8)" }
+                  }>
+                  {t === "technical" ? "📈 Technical (8,500+)" : "📊 Fundamental (~30)"}
+                </button>
               ))}
             </div>
           </div>
-
-          {/* Four dimensions */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="bg-white rounded-lg border border-gray-100 p-3">
-              <p className="text-xs font-bold text-gray-700 mb-1">💰 Val — Valuation (−1 to +1, weight 35%)</p>
-              <p className="text-xs text-gray-500">
-                Positive = <strong>cheap vs sector peers</strong>. Compares P/E, EV/EBITDA, P/B, PEG ratio, and FCF yield
-                against sector medians. A score of +0.5 means significantly undervalued; −0.5 means expensive.
-              </p>
-            </div>
-            <div className="bg-white rounded-lg border border-gray-100 p-3">
-              <p className="text-xs font-bold text-gray-700 mb-1">⭐ Qual — Quality (0 to 1, weight 30%)</p>
-              <p className="text-xs text-gray-500">
-                Measures <strong>business quality and management effectiveness</strong>: gross/net margins, ROE, ROIC,
-                debt-to-equity, current ratio, and interest coverage. Higher = stronger, more durable business.
-              </p>
-            </div>
-            <div className="bg-white rounded-lg border border-gray-100 p-3">
-              <p className="text-xs font-bold text-gray-700 mb-1">📈 Growth (0 to 1, weight 20%)</p>
-              <p className="text-xs text-gray-500">
-                <strong>Revenue, earnings and free cash flow growth momentum</strong> — YoY rates plus 5-year CAGRs.
-                High score = accelerating, profitable growth; low score = stagnant or declining.
-              </p>
-            </div>
-            <div className="bg-white rounded-lg border border-gray-100 p-3">
-              <p className="text-xs font-bold text-gray-700 mb-1">🌍 Macro (−1 to +1, weight 15%)</p>
-              <p className="text-xs text-gray-500">
-                <strong>Sector-level macro & geopolitical environment</strong> via Gemini real-time grounding.
-                Covers interest rates, trade policy, geopolitical risks (tariffs, conflicts),
-                and sector-specific regulation. Positive = tailwinds; negative = headwinds.
-              </p>
-            </div>
-          </div>
-
-          <div className="bg-amber-50 border border-amber-100 rounded-lg p-3">
-            <p className="text-xs text-amber-700">
-              <strong>AI Disruption Risk</strong> — estimated exposure of the sector to AI/automation disruption.
-              HIGH risk may compress long-term margins for companies not adapting; it does <em>not</em> automatically mean sell.
-              Combine with the individual stock&apos;s Growth and Quality scores for full context.
-            </p>
-          </div>
         </div>
-      )}
+      </div>
+
+      {tab === "technical" ? <TechnicalTab /> : <FundamentalTab />}
     </div>
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// Technical Screener Tab
+// ══════════════════════════════════════════════════════════════════════════════
 
-export default function ScreenerPage() {
-  const [exchange, setExchange] = useState("US");
-  const [signal,   setSignal]   = useState("");
-  const [sector,   setSector]   = useState("");
-  const [minScore, setMinScore] = useState("");
-  const [maxRisk,  setMaxRisk]  = useState("");
-  const [limit,    setLimit]    = useState(50);
+function TechnicalTab() {
+  const [exchange,   setExchange]   = useState("US");
+  const [sortBy,     setSortBy]     = useState("change_1d_pct");
+  const [sortDir,    setSortDir]    = useState("desc");
+  const [minPrice,   setMinPrice]   = useState("");
+  const [maxPrice,   setMaxPrice]   = useState("");
+  const [minRsi,     setMinRsi]     = useState("");
+  const [maxRsi,     setMaxRsi]     = useState("");
+  const [macdTrend,  setMacdTrend]  = useState("");
+  const [kdjSignal,  setKdjSignal]  = useState("");
+  const [goldenCross, setGoldenCross] = useState(false);
+  const [deathCross,  setDeathCross]  = useState(false);
+  const [minVolRatio, setMinVolRatio] = useState("");
+  const [near52High, setNear52High] = useState("");
+  const [near52Low,  setNear52Low]  = useState("");
+  const [limit,      setLimit]      = useState(50);
 
-  const [rows,    setRows]    = useState<ScreenerRow[]>([]);
+  const [rows,    setRows]    = useState<TechRow[]>([]);
+  const [total,   setTotal]   = useState(0);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
-  const [ran,     setRan]     = useState(false);
-
-  // ── Load screener defaults from investor profile ─────────────────────────
-  useEffect(() => {
-    (async () => {
-      try {
-        const res  = await fetch("/api/profile");
-        const json = await res.json() as {
-          ok: boolean;
-          profile?: {
-            preferred_exchanges?: string[];
-            screener_defaults?: {
-              exchange?: string;
-              signal?:   string;
-              sector?:   string;
-              minScore?: string;
-              maxRisk?:  string;
-              limit?:    number;
-            };
-          };
-        };
-        if (!json.ok || !json.profile) return;
-        const p  = json.profile;
-        const sd = p.screener_defaults ?? {};
-        // Apply profile exchange preference if no screener default saved
-        if (sd.exchange)        setExchange(sd.exchange);
-        else if (p.preferred_exchanges?.[0]) setExchange(p.preferred_exchanges[0]);
-        if (sd.signal   != null) setSignal(sd.signal);
-        if (sd.sector   != null) setSector(sd.sector);
-        if (sd.minScore != null) setMinScore(sd.minScore);
-        if (sd.maxRisk  != null) setMaxRisk(sd.maxRisk);
-        if (sd.limit    != null) setLimit(sd.limit);
-      } catch { /* no profile — use defaults */ }
-    })();
-  }, []);
-
-  // ── Save screener state back to profile after each run ───────────────────
-  const saveScreenerDefaults = useCallback(async (
-    ex: string, sig: string, sec: string, min: string, risk: string, lim: number
-  ) => {
-    try {
-      await fetch("/api/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          screener_defaults: {
-            exchange:  ex,
-            signal:    sig,
-            sector:    sec,
-            minScore:  min,
-            maxRisk:   risk,
-            limit:     lim,
-          },
-        }),
-      });
-    } catch { /* non-fatal — profile save failure shouldn't break screener */ }
-  }, []);
 
   const runScreener = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({ exchange, limit: String(limit) });
-      if (signal)   params.set("signal",        signal);
-      if (sector)   params.set("sector",        sector);
-      if (minScore) params.set("min_score",     minScore);
-      if (maxRisk)  params.set("max_tech_risk", maxRisk);
+      const p = new URLSearchParams({
+        exchange, sort_by: sortBy, sort_dir: sortDir, limit: String(limit),
+      });
+      if (minPrice)    p.set("min_price", minPrice);
+      if (maxPrice)    p.set("max_price", maxPrice);
+      if (minRsi)      p.set("min_rsi", minRsi);
+      if (maxRsi)      p.set("max_rsi", maxRsi);
+      if (macdTrend)   p.set("macd_trend", macdTrend);
+      if (kdjSignal)   p.set("kdj_signal", kdjSignal);
+      if (goldenCross) p.set("golden_cross", "true");
+      if (deathCross)  p.set("death_cross", "true");
+      if (minVolRatio) p.set("min_volume_ratio", minVolRatio);
+      if (near52High)  p.set("near_52w_high", near52High);
+      if (near52Low)   p.set("near_52w_low", near52Low);
 
-      const res = await fetch(`/api/screener?${params.toString()}`);
+      const res = await fetch(`/api/screener/technical?${p.toString()}`);
       const json = await res.json();
       if (json.ok) {
         setRows(json.data ?? []);
-        setRan(true);
-        // Persist filter choices to profile (fire-and-forget)
-        saveScreenerDefaults(exchange, signal, sector, minScore, maxRisk, limit);
+        setTotal(json.total ?? 0);
       } else {
         setError(json.error ?? "Screener request failed");
       }
@@ -302,372 +437,561 @@ export default function ScreenerPage() {
     } finally {
       setLoading(false);
     }
-  }, [exchange, signal, sector, minScore, maxRisk, limit, saveScreenerDefaults]);
+  }, [exchange, sortBy, sortDir, minPrice, maxPrice, minRsi, maxRsi, macdTrend, kdjSignal, goldenCross, deathCross, minVolRatio, near52High, near52Low, limit]);
 
-  // Auto-run on first load with defaults
-  useEffect(() => {
-    runScreener();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Auto-run on mount
+  useEffect(() => { runScreener(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-run when dropdown/checkbox filters change (instant feedback)
+  useEffect(() => { runScreener(); }, [exchange, sortBy, sortDir, macdTrend, kdjSignal, goldenCross, deathCross, limit]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSort = (col: string) => {
+    if (sortBy === col) {
+      setSortDir(sortDir === "desc" ? "asc" : "desc");
+    } else {
+      setSortBy(col);
+      setSortDir("desc");
+    }
+  };
 
   return (
-    <div>
-      {/* ── Hero ─────────────────────────────────────────────────────────────── */}
-      <div
-        className="w-full"
-        style={{ background: "linear-gradient(45deg, seagreen, darkseagreen)", paddingTop: "32px", paddingBottom: "36px" }}
-      >
-        <div className="max-w-6xl mx-auto px-8 space-y-4">
-          <div className="flex items-end gap-4 flex-wrap">
-            <h1
-              className="text-4xl font-bold text-white drop-shadow-sm"
-              style={{ fontFamily: "var(--font-rajdhani)" }}
-            >
-              Fundamental Stock Screener
-            </h1>
-            <span className="text-white/70 font-light pb-1">
-              AI-scored · nightly updated
-            </span>
-          </div>
-
-          {/* Filters */}
-          <div className="flex items-end gap-4 flex-wrap">
+    <>
+      {/* Filters */}
+      <div className="w-full" style={{ background: "linear-gradient(135deg, #2e8b57, #3cb371)", padding: "16px 0 20px" }}>
+        <div className="max-w-7xl mx-auto px-8">
+          <div className="flex items-end gap-3 flex-wrap">
 
             {/* Exchange */}
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-white/70 uppercase tracking-wide">
-                Exchange
-              </label>
-              <div className="flex gap-2">
+              <label className="text-[10px] font-semibold text-white/70 uppercase tracking-wide">Exchange</label>
+              <div className="flex gap-1">
                 {["US", "ASX"].map((ex) => (
-                  <button
-                    key={ex}
-                    onClick={() => setExchange(ex)}
-                    className="px-4 py-2 rounded-lg text-sm font-semibold transition-all hover:brightness-110"
-                    style={
-                      exchange === ex
-                        ? { background: "#fd8412", color: "#fff" }
-                        : { background: "rgba(255,255,255,0.2)", color: "#fff" }
-                    }
-                  >
+                  <button key={ex} onClick={() => setExchange(ex)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                    style={exchange === ex
+                      ? { background: "#fd8412", color: "#fff" }
+                      : { background: "rgba(255,255,255,0.2)", color: "#fff" }}>
                     {ex === "US" ? "🇺🇸 US" : "🇦🇺 ASX"}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Signal */}
+            {/* Price range */}
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-white/70 uppercase tracking-wide">
-                AI Signal
-              </label>
-              <select
-                value={signal}
-                onChange={(e) => setSignal(e.target.value)}
-                className="text-sm border-0 rounded-lg px-3 py-2 focus:outline-none bg-white/90 text-gray-700"
-              >
-                {SIGNAL_OPTIONS.map((s) => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
-                ))}
+              <label className="text-[10px] font-semibold text-white/70 uppercase tracking-wide">Price ($)</label>
+              <div className="flex gap-1">
+                <input type="number" placeholder="Min" value={minPrice} onChange={(e) => setMinPrice(e.target.value)}
+                  className="w-16 text-xs border-0 rounded-lg px-2 py-1.5 bg-white/90 text-gray-700" />
+                <input type="number" placeholder="Max" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)}
+                  className="w-16 text-xs border-0 rounded-lg px-2 py-1.5 bg-white/90 text-gray-700" />
+              </div>
+            </div>
+
+            {/* RSI range */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-semibold text-white/70 uppercase tracking-wide">RSI (14)</label>
+              <div className="flex gap-1">
+                <input type="number" placeholder="Min" value={minRsi} onChange={(e) => setMinRsi(e.target.value)}
+                  className="w-14 text-xs border-0 rounded-lg px-2 py-1.5 bg-white/90 text-gray-700" />
+                <input type="number" placeholder="Max" value={maxRsi} onChange={(e) => setMaxRsi(e.target.value)}
+                  className="w-14 text-xs border-0 rounded-lg px-2 py-1.5 bg-white/90 text-gray-700" />
+              </div>
+            </div>
+
+            {/* MACD Trend */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-semibold text-white/70 uppercase tracking-wide">MACD</label>
+              <select value={macdTrend} onChange={(e) => setMacdTrend(e.target.value)}
+                className="text-xs border-0 rounded-lg px-2 py-1.5 bg-white/90 text-gray-700">
+                <option value="">Any</option>
+                <option value="BULLISH">Bullish</option>
+                <option value="BEARISH">Bearish</option>
               </select>
             </div>
 
-            {/* Sector */}
+            {/* KDJ Signal */}
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-white/70 uppercase tracking-wide">
-                Sector
-              </label>
-              <select
-                value={sector}
-                onChange={(e) => setSector(e.target.value)}
-                className="text-sm border-0 rounded-lg px-3 py-2 focus:outline-none bg-white/90 text-gray-700 min-w-[160px]"
-              >
-                <option value="">All sectors</option>
-                {SECTOR_OPTIONS.filter(Boolean).map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
+              <label className="text-[10px] font-semibold text-white/70 uppercase tracking-wide">KDJ</label>
+              <select value={kdjSignal} onChange={(e) => setKdjSignal(e.target.value)}
+                className="text-xs border-0 rounded-lg px-2 py-1.5 bg-white/90 text-gray-700">
+                <option value="">Any</option>
+                <option value="OVERBOUGHT">Overbought</option>
+                <option value="OVERSOLD">Oversold</option>
+                <option value="NEUTRAL">Neutral</option>
               </select>
             </div>
 
-            {/* Min score */}
+            {/* MA Crossovers */}
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-white/70 uppercase tracking-wide">
-                Min Score
-              </label>
-              <select
-                value={minScore}
-                onChange={(e) => setMinScore(e.target.value)}
-                className="text-sm border-0 rounded-lg px-3 py-2 focus:outline-none bg-white/90 text-gray-700 min-w-[200px]"
-              >
-                {MIN_SCORE_PRESETS.map((p) => (
-                  <option key={p.value} value={p.value}>{p.label}</option>
-                ))}
-              </select>
+              <label className="text-[10px] font-semibold text-white/70 uppercase tracking-wide">MA Cross</label>
+              <div className="flex gap-2">
+                <label className="flex items-center gap-1 text-xs text-white cursor-pointer">
+                  <input type="checkbox" checked={goldenCross} onChange={(e) => { setGoldenCross(e.target.checked); if (e.target.checked) setDeathCross(false); }} />
+                  Golden
+                </label>
+                <label className="flex items-center gap-1 text-xs text-white cursor-pointer">
+                  <input type="checkbox" checked={deathCross} onChange={(e) => { setDeathCross(e.target.checked); if (e.target.checked) setGoldenCross(false); }} />
+                  Death
+                </label>
+              </div>
             </div>
 
-            {/* Max tech risk */}
+            {/* Volume ratio */}
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-white/70 uppercase tracking-wide">
-                AI Disruption Risk
-              </label>
-              <select
-                value={maxRisk}
-                onChange={(e) => setMaxRisk(e.target.value)}
-                className="text-sm border-0 rounded-lg px-3 py-2 focus:outline-none bg-white/90 text-gray-700"
-              >
-                <option value="">Any risk level</option>
-                <option value="LOW">≤ LOW (safest)</option>
-                <option value="MEDIUM">≤ MEDIUM</option>
-                <option value="HIGH">Include HIGH</option>
-              </select>
+              <label className="text-[10px] font-semibold text-white/70 uppercase tracking-wide">Vol ratio ≥</label>
+              <input type="number" step="0.5" placeholder="e.g. 2" value={minVolRatio} onChange={(e) => setMinVolRatio(e.target.value)}
+                className="w-16 text-xs border-0 rounded-lg px-2 py-1.5 bg-white/90 text-gray-700" />
+            </div>
+
+            {/* 52w proximity */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-semibold text-white/70 uppercase tracking-wide">52w</label>
+              <div className="flex gap-1">
+                <select value={near52High} onChange={(e) => { setNear52High(e.target.value); if (e.target.value) setNear52Low(""); }}
+                  className="text-xs border-0 rounded-lg px-2 py-1.5 bg-white/90 text-gray-700">
+                  <option value="">Any</option>
+                  <option value="5">Near High (5%)</option>
+                  <option value="10">Near High (10%)</option>
+                </select>
+                <select value={near52Low} onChange={(e) => { setNear52Low(e.target.value); if (e.target.value) setNear52High(""); }}
+                  className="text-xs border-0 rounded-lg px-2 py-1.5 bg-white/90 text-gray-700">
+                  <option value="">Any</option>
+                  <option value="10">Near Low (10%)</option>
+                  <option value="20">Near Low (20%)</option>
+                </select>
+              </div>
             </div>
 
             {/* Limit */}
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-white/70 uppercase tracking-wide">
-                Show
-              </label>
-              <select
-                value={limit}
-                onChange={(e) => setLimit(Number(e.target.value))}
-                className="text-sm border-0 rounded-lg px-3 py-2 focus:outline-none bg-white/90 text-gray-700"
-              >
-                {[20, 50, 100].map((n) => <option key={n} value={n}>{n} results</option>)}
+              <label className="text-[10px] font-semibold text-white/70 uppercase tracking-wide">Show</label>
+              <select value={limit} onChange={(e) => setLimit(Number(e.target.value))}
+                className="text-xs border-0 rounded-lg px-2 py-1.5 bg-white/90 text-gray-700">
+                {[20, 50, 100, 200].map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
             </div>
 
-            {/* Run button */}
-            <button
-              onClick={runScreener}
-              disabled={loading}
-              className="px-6 py-2.5 rounded-xl text-sm font-bold transition-all hover:brightness-110 disabled:opacity-60 shadow-md"
-              style={{ background: "#fd8412", color: "#fff" }}
-            >
-              {loading ? "⟳ Scanning…" : "🔍 Screen stocks"}
+            {/* Run */}
+            <button onClick={runScreener} disabled={loading}
+              className="px-5 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110 disabled:opacity-60 shadow-md"
+              style={{ background: "#fd8412", color: "#fff" }}>
+              {loading ? "⟳ Scanning…" : "🔍 Screen"}
             </button>
-          </div>
-
-          {/* Signal scale reference */}
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <span className="text-white/50 text-xs">Score scale:</span>
-            {[
-              { label: "STRONG BUY ≥0.5", bg: "#f0fdf4", text: "#15803d" },
-              { label: "BUY ≥0.2",        bg: "#dcfce7", text: "#166534" },
-              { label: "NEUTRAL →",       bg: "#f9fafb", text: "#6b7280" },
-              { label: "SELL ↓",          bg: "#fff7ed", text: "#c2410c" },
-              { label: "STRONG SELL ≤−0.5", bg: "#fef2f2", text: "#991b1b" },
-            ].map(({ label, bg, text }) => (
-              <span key={label} className="text-xs font-semibold px-2.5 py-1 rounded-full"
-                style={{ background: bg, color: text }}>
-                {label}
-              </span>
-            ))}
           </div>
         </div>
       </div>
 
-      {/* ── Main content area ─────────────────────────────────────────────────── */}
-      <div className="max-w-6xl mx-auto px-8 py-6 space-y-6">
+      {/* Results */}
+      <div className="max-w-7xl mx-auto px-8 py-4 space-y-3">
+        {error && <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">{error}</div>}
 
-        {/* Value proposition */}
-        <p className="text-sm text-gray-500">
-          Find stocks that are <strong className="text-gray-700">fundamentally attractive right now</strong> —
-          screened by AI across valuation (is it cheap?), business quality (is management doing a good job?),
-          growth momentum (revenue &amp; cashflow trajectory), and macro environment (tailwinds or headwinds?).
-          Use this to shortlist candidates, then open the full AI analysis for buy/sell/hold depth.
-        </p>
-
-        {/* Score legend (expandable) */}
-        <ScoreLegend />
-
-        {/* Error */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        {/* Loading */}
         {loading && (
-          <div className="flex items-center justify-center py-24">
-            <div className="text-center space-y-3">
-              <div className="text-4xl animate-pulse">📊</div>
-              <p className="text-gray-500 text-sm font-medium">Scanning fundamentals…</p>
-              <p className="text-gray-400 text-xs">Reading nightly-computed AI scores from database</p>
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center space-y-2">
+              <div className="text-3xl animate-pulse">📈</div>
+              <p className="text-gray-500 text-sm">Scanning {exchange} stocks…</p>
             </div>
           </div>
         )}
 
-        {/* Results count */}
-        {ran && !loading && !error && (
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-500">
-              {rows.length === 0
-                ? "No stocks match your filters."
-                : <><strong>{rows.length}</strong> stock{rows.length === 1 ? "" : "s"} found — click any ticker for full AI analysis</>}
-            </p>
-            <p className="text-xs text-gray-400">
-              Scores computed nightly · Updated up to 24h ago
-            </p>
+        {!loading && rows.length > 0 && (
+          <>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500">
+                <strong>{rows.length}</strong> of <strong>{total.toLocaleString()}</strong> {exchange} stocks
+                {rows.length < total && " (filtered)"}
+              </p>
+              <p className="text-xs text-gray-400">
+                Updated: {rows[0]?.trade_date ?? "—"} · Click column headers to sort
+              </p>
+            </div>
+
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
+              <table className="w-full min-w-[1700px] text-xs">
+                <thead>
+                  <tr style={{ background: "#f8fafc", borderBottom: "2px solid #e2e8f0" }}>
+                    <th className="px-1 py-2 w-8" title="Add to watchlist">☆</th>
+                    <Th label="Ticker" col="ticker" sortBy={sortBy} sortDir={sortDir} onClick={handleSort} tip="Stock ticker symbol" />
+                    <Th label="Price" col="latest_close" sortBy={sortBy} sortDir={sortDir} onClick={handleSort} align="right" tip="Latest closing price" />
+                    {/* ── Composite Signals (right after price) ── */}
+                    <th className="px-1 py-2 text-center font-bold text-gray-500 uppercase tracking-wide text-[9px]" title="Short-term signal (Days): RSI + MACD + KDJ + SMA5/10">Days</th>
+                    <th className="px-1 py-2 text-center font-bold text-gray-500 uppercase tracking-wide text-[9px]" title="Near-term signal (Weeks): SMA10/20 + 5D% + BB + Volume">Weeks</th>
+                    <th className="px-1 py-2 text-center font-bold text-gray-500 uppercase tracking-wide text-[9px]" title="Medium-term signal (Months): SMA20/50 + 1M% + 3M% + OBV">Months</th>
+                    <th className="px-1 py-2 text-center font-bold text-gray-500 uppercase tracking-wide text-[9px]" title="Long-term signal (Quarter+): SMA50/200 + 52w High + 6M% + 1Y%">Quarter</th>
+                    {/* ── Price Changes ── */}
+                    <Th label="1D %" col="change_1d_pct" sortBy={sortBy} sortDir={sortDir} onClick={handleSort} align="right" tip="1-day price change %" />
+                    <Th label="5D %" col="change_5d_pct" sortBy={sortBy} sortDir={sortDir} onClick={handleSort} align="right" tip="5-day price change %" />
+                    <Th label="1M %" col="change_1m_pct" sortBy={sortBy} sortDir={sortDir} onClick={handleSort} align="right" tip="1-month price change %" />
+                    {/* ── Detailed TA ── */}
+                    <Th label="RSI(14)" col="rsi_14" sortBy={sortBy} sortDir={sortDir} onClick={handleSort} align="right" tip="Relative Strength Index (14-day). <30 = oversold, >70 = overbought" />
+                    <th className="px-2 py-2 text-center font-bold text-gray-500 uppercase tracking-wide text-[10px]" title="RSI Zone: OVERBOUGHT (>70), OVERSOLD (<30), NEUTRAL (30-70)">RSI Signal</th>
+                    <th className="px-2 py-2 text-center font-bold text-gray-500 uppercase tracking-wide text-[10px]" title="MACD crossover: BULLISH = MACD line above signal line, BEARISH = below">MACD</th>
+                    <th className="px-2 py-2 text-center font-bold text-gray-500 uppercase tracking-wide text-[10px]" title="KDJ Stochastic: OVERBOUGHT (K>80), OVERSOLD (K<20), NEUTRAL">KDJ</th>
+                    <th className="px-1 py-2 text-center font-bold text-gray-500 uppercase tracking-wide text-[9px]" title="Short-term: SMA5 vs SMA10 (days). Bullish = SMA5 above SMA10">SMA5/10</th>
+                    <th className="px-1 py-2 text-center font-bold text-gray-500 uppercase tracking-wide text-[9px]" title="Near-term: SMA10 vs SMA20 (weeks). Bullish = SMA10 above SMA20">SMA10/20</th>
+                    <th className="px-1 py-2 text-center font-bold text-gray-500 uppercase tracking-wide text-[9px]" title="Medium-term: SMA20 vs SMA50 (months). Bullish = SMA20 above SMA50">SMA20/50</th>
+                    <th className="px-1 py-2 text-center font-bold text-gray-500 uppercase tracking-wide text-[9px]" title="Long-term: SMA50 vs SMA200 (golden/death cross). Bullish = SMA50 above SMA200">SMA50/200</th>
+                    <th className="px-2 py-2 text-center font-bold text-gray-500 uppercase tracking-wide text-[10px]" title="On-Balance Volume trend — UP = buying pressure, DOWN = selling pressure">OBV</th>
+                    <Th label="52w High" col="pct_from_52w_high" sortBy={sortBy} sortDir={sortDir} onClick={handleSort} align="right" tip="% below 52-week high. 0% = at 52-week high" />
+                    <Th label="Vol Ratio" col="volume_ratio" sortBy={sortBy} sortDir={sortDir} onClick={handleSort} align="right" tip="Today's volume / 20-day average volume. >2.0 = unusual volume spike" />
+                    <Th label="Volume" col="latest_volume" sortBy={sortBy} sortDir={sortDir} onClick={handleSort} align="right" tip="Latest trading volume (shares)" />
+                    <Th label="Volatility" col="volatility_20d" sortBy={sortBy} sortDir={sortDir} onClick={handleSort} align="right" tip="20-day annualized volatility %. Higher = more price swings" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r, idx) => (
+                    <tr key={r.ticker} className="border-b border-gray-50 hover:bg-[#f0f7f1] transition-colors"
+                      style={idx % 2 ? { background: "#fafafa" } : {}}>
+                      <td className="px-1 py-1 text-center">
+                        <WatchlistButton symbol={r.ticker} exchange={r.exchange} compact />
+                      </td>
+                      <td className="px-3 py-2">
+                        <Link href={`/ticker/${r.ticker}/intel`}
+                          className="font-bold text-[#2e8b57] hover:text-[#1a6e3e] hover:underline text-sm">
+                          {r.ticker}
+                        </Link>
+                      </td>
+                      <td className="px-2 py-2 text-right font-semibold tabular-nums text-gray-700">
+                        {r.latest_close !== null ? (r.latest_close < 1 ? r.latest_close.toFixed(4) : r.latest_close.toFixed(2)) : "—"}
+                      </td>
+                      {/* Composite signals (right after price) */}
+                      <td className="px-1 py-2 text-center"><SignalCell signal={signalDays(r)} /></td>
+                      <td className="px-1 py-2 text-center"><SignalCell signal={signalWeeks(r)} /></td>
+                      <td className="px-1 py-2 text-center"><SignalCell signal={signalMonths(r)} /></td>
+                      <td className="px-1 py-2 text-center"><SignalCell signal={signalQuarter(r)} /></td>
+                      {/* Price changes */}
+                      <td className="px-2 py-2 text-right">{pctCell(r.change_1d_pct)}</td>
+                      <td className="px-2 py-2 text-right">{pctCell(r.change_5d_pct)}</td>
+                      <td className="px-2 py-2 text-right">{pctCell(r.change_1m_pct)}</td>
+                      {/* Detailed TA */}
+                      <td className="px-2 py-2 text-right"><RsiCell rsi={r.rsi_14} /></td>
+                      <td className="px-2 py-2 text-center"><RsiSignal rsi={r.rsi_14} /></td>
+                      <td className="px-2 py-2 text-center">{trendChip(r.macd_trend)}</td>
+                      <td className="px-2 py-2 text-center">{trendChip(r.kdj_signal)}</td>
+                      <td className="px-1 py-2 text-center"><SmaCrossCell fast={r.sma_5} slow={r.sma_10} label="5/10" /></td>
+                      <td className="px-1 py-2 text-center"><SmaCrossCell fast={r.sma_10} slow={r.sma_20} label="10/20" /></td>
+                      <td className="px-1 py-2 text-center"><SmaCrossCell fast={r.sma_20} slow={r.sma_50} label="20/50" /></td>
+                      <td className="px-1 py-2 text-center"><SmaCrossCell fast={r.sma_50} slow={r.sma_200} label="50/200" /></td>
+                      <td className="px-2 py-2 text-center">{trendChip(r.obv_trend)}</td>
+                      <td className="px-2 py-2 text-right">{pctCell(r.pct_from_52w_high)}</td>
+                      <td className="px-2 py-2 text-right">
+                        <span className={`text-xs tabular-nums font-semibold ${(r.volume_ratio ?? 0) >= 2 ? "text-blue-600" : "text-gray-500"}`}>
+                          {r.volume_ratio !== null ? r.volume_ratio.toFixed(1) + "x" : "—"}
+                        </span>
+                      </td>
+                      <td className="px-2 py-2 text-right text-xs tabular-nums text-gray-500">{volFmt(r.latest_volume)}</td>
+                      <td className="px-2 py-2 text-right text-xs tabular-nums text-gray-500">
+                        {r.volatility_20d !== null ? (r.volatility_20d * 100).toFixed(0) + "%" : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
+        {!loading && rows.length === 0 && !error && (
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-12 text-center">
+            <div className="text-3xl mb-3">🔍</div>
+            <p className="font-semibold text-gray-700 mb-1">No stocks match your filters</p>
+            <p className="text-sm text-gray-400">Try relaxing the filters or switching exchange.</p>
           </div>
         )}
 
-        {/* Results table */}
+        {/* ── Backtest Results ──────────────────────────────────────────── */}
+        <details className="bg-white rounded-xl border border-gray-100 shadow-sm">
+          <summary className="px-5 py-3 cursor-pointer text-sm font-semibold text-gray-600 hover:text-gray-800 select-none">
+            Signal Backtest Results &amp; Methodology (v2, 171 US stocks, Jan 2024 &ndash; Mar 2026)
+          </summary>
+          <div className="px-5 pb-5 space-y-4">
+
+            {/* Backtest Performance Table */}
+            <div className="border border-gray-100 rounded-lg overflow-hidden">
+              <div className="bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 uppercase">Backtest Win Rates — Real Data, 59,923 Signals Tested</div>
+              <table className="w-full text-xs">
+                <thead><tr className="border-b border-gray-200 bg-gray-50">
+                  <th className="text-left px-3 py-1.5 text-gray-600 font-semibold">Signal</th>
+                  <th className="text-center px-2 py-1.5 text-gray-600 font-semibold">Window</th>
+                  <th className="text-center px-2 py-1.5 text-gray-600 font-semibold">Win Rate</th>
+                  <th className="text-center px-2 py-1.5 text-gray-600 font-semibold">Avg Return</th>
+                  <th className="text-center px-2 py-1.5 text-gray-600 font-semibold">Profit Factor</th>
+                  <th className="text-center px-2 py-1.5 text-gray-600 font-semibold">Signals</th>
+                </tr></thead>
+                <tbody className="divide-y divide-gray-50">
+                  <tr className="bg-green-50/50"><td className="px-3 py-1.5 font-bold text-green-800">Quarter BUY</td><td className="text-center">180D</td><td className="text-center font-bold text-green-700">64.4%</td><td className="text-center">+8.82%</td><td className="text-center font-bold">2.0</td><td className="text-center text-gray-500">16,856</td></tr>
+                  <tr className="bg-green-50/50"><td className="px-3 py-1.5 font-bold text-green-800">Months BUY</td><td className="text-center">60D</td><td className="text-center font-bold text-green-700">61.2%</td><td className="text-center">+3.25%</td><td className="text-center font-bold">1.6</td><td className="text-center text-gray-500">9,709</td></tr>
+                  <tr className="bg-green-50/30"><td className="px-3 py-1.5 font-bold text-green-800">Quarter BUY</td><td className="text-center">120D</td><td className="text-center font-bold text-green-700">61.6%</td><td className="text-center">+4.79%</td><td className="text-center font-bold">1.6</td><td className="text-center text-gray-500">16,856</td></tr>
+                  <tr className="bg-green-50/30"><td className="px-3 py-1.5 font-bold text-green-800">Months BUY</td><td className="text-center">40D</td><td className="text-center font-bold text-green-700">58.5%</td><td className="text-center">+2.25%</td><td className="text-center font-bold">1.5</td><td className="text-center text-gray-500">9,709</td></tr>
+                  <tr><td className="px-3 py-1.5 font-medium">Months BUY</td><td className="text-center">20D</td><td className="text-center text-green-700">55.3%</td><td className="text-center">+1.16%</td><td className="text-center">1.4</td><td className="text-center text-gray-500">9,709</td></tr>
+                  <tr><td className="px-3 py-1.5 font-medium">Weeks SELL</td><td className="text-center">15D</td><td className="text-center">53.2%</td><td className="text-center">-0.81% med</td><td className="text-center">1.0</td><td className="text-center text-gray-500">7,011</td></tr>
+                  <tr><td className="px-3 py-1.5 font-medium">Days SELL</td><td className="text-center">3D</td><td className="text-center">52.9%</td><td className="text-center">-0.36% med</td><td className="text-center">1.1</td><td className="text-center text-gray-500">4,785</td></tr>
+                  <tr className="bg-amber-50/30"><td className="px-3 py-1.5 font-medium text-amber-800">Days BUY</td><td className="text-center">1-5D</td><td className="text-center text-amber-700">~49%</td><td className="text-center">~0%</td><td className="text-center">1.1</td><td className="text-center text-gray-500">4,835</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Methodology */}
+            <p className="text-xs text-gray-500">
+              <strong>Methodology:</strong> Each indicator votes <strong>+1</strong> (bullish), <strong>-1</strong> (bearish), or <strong>0</strong> (neutral).
+              Short-term (Days/Weeks): BUY &ge; 3, SELL &le; -2 (asymmetric — take profit triggers earlier).
+              Long-term (Months/Quarter): BUY &ge; 3, SELL &le; -3 to -4 (trend-following needs more evidence).
+            </p>
+            <p className="text-xs text-gray-500">
+              <strong>Key principles:</strong> Days uses RSI recovery zone (30-45, not &lt;30 which catches falling knives — validated by Larry Connors&apos; RSI research).
+              Months adds SMA50/200 trend-regime filter (don&apos;t sell in bull markets — inspired by O&apos;Neil CAN SLIM and Stan Weinstein Stage Analysis).
+              Quarter follows institutional flow via OBV accumulation/distribution.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Days */}
+              <div className="border border-gray-100 rounded-lg overflow-hidden">
+                <div className="bg-gray-50 px-3 py-2 text-xs font-bold text-gray-700 uppercase">Days — Mean-Reversion <span className="text-amber-600 normal-case">(~49% BUY win rate — use with caution)</span></div>
+                <table className="w-full text-xs">
+                  <thead><tr className="border-b border-gray-100">
+                    <th className="text-left px-3 py-1.5 text-gray-500 font-semibold">Indicator</th>
+                    <th className="text-center px-2 py-1.5 text-green-700 font-semibold">+1 Buy Setup</th>
+                    <th className="text-center px-2 py-1.5 text-red-700 font-semibold">-1 Sell/Take Profit</th>
+                  </tr></thead>
+                  <tbody className="divide-y divide-gray-50">
+                    <tr><td className="px-3 py-1.5 font-medium">RSI (14)</td><td className="text-center">30-45 (recovering)</td><td className="text-center">&ge; 65 (overbought zone)</td></tr>
+                    <tr><td className="px-3 py-1.5 font-medium">MACD</td><td className="text-center">Bullish (confirmation)</td><td className="text-center">Bearish crossover</td></tr>
+                    <tr><td className="px-3 py-1.5 font-medium">KDJ</td><td className="text-center">Oversold (K&lt;20)</td><td className="text-center">Overbought (K&gt;80)</td></tr>
+                    <tr><td className="px-3 py-1.5 font-medium">Price vs SMA5</td><td className="text-center">-3% to -0.5% (pullback)</td><td className="text-center">&gt; +3% above (stretched)</td></tr>
+                    <tr className="bg-amber-50/50"><td className="px-3 py-1.5 font-medium italic">1D % Action</td><td className="text-center">-4% to -1% (moderate dip)</td><td className="text-center">&gt; +3% (sell the rip)</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Weeks */}
+              <div className="border border-gray-100 rounded-lg overflow-hidden">
+                <div className="bg-gray-50 px-3 py-2 text-xs font-bold text-gray-700 uppercase">Weeks — Swing-Trader <span className="text-gray-400 normal-case">(53% SELL win rate)</span></div>
+                <table className="w-full text-xs">
+                  <thead><tr className="border-b border-gray-100">
+                    <th className="text-left px-3 py-1.5 text-gray-500 font-semibold">Indicator</th>
+                    <th className="text-center px-2 py-1.5 text-green-700 font-semibold">+1 Buy Setup</th>
+                    <th className="text-center px-2 py-1.5 text-red-700 font-semibold">-1 Sell/Take Profit</th>
+                  </tr></thead>
+                  <tbody className="divide-y divide-gray-50">
+                    <tr><td className="px-3 py-1.5 font-medium">SMA 10/20</td><td className="text-center">SMA10 &gt; SMA20</td><td className="text-center">SMA10 &lt; SMA20</td></tr>
+                    <tr><td className="px-3 py-1.5 font-medium">Bollinger %B</td><td className="text-center">&lt; 0.2 (near lower band)</td><td className="text-center">&gt; 0.8 (near upper band)</td></tr>
+                    <tr><td className="px-3 py-1.5 font-medium">Volume Spike</td><td className="text-center">Vol &ge; 2x + up day</td><td className="text-center">Vol &ge; 2x + down day</td></tr>
+                    <tr><td className="px-3 py-1.5 font-medium">RSI (14)</td><td className="text-center">&le; 35</td><td className="text-center">&ge; 65</td></tr>
+                    <tr className="bg-amber-50/50"><td className="px-3 py-1.5 font-medium italic">5D % Action</td><td className="text-center">&lt; -5% (oversold week)</td><td className="text-center">&gt; +5% (profit-taking)</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Months */}
+              <div className="border border-gray-100 rounded-lg overflow-hidden">
+                <div className="bg-gray-50 px-3 py-2 text-xs font-bold text-gray-700 uppercase">Months — Trend-Following <span className="text-green-600 normal-case">(61% BUY win rate at 60D)</span></div>
+                <table className="w-full text-xs">
+                  <thead><tr className="border-b border-gray-100">
+                    <th className="text-left px-3 py-1.5 text-gray-500 font-semibold">Indicator</th>
+                    <th className="text-center px-2 py-1.5 text-green-700 font-semibold">+1 (Bullish Trend)</th>
+                    <th className="text-center px-2 py-1.5 text-red-700 font-semibold">-1 (Bearish Trend)</th>
+                  </tr></thead>
+                  <tbody className="divide-y divide-gray-50">
+                    <tr><td className="px-3 py-1.5 font-medium">SMA 20/50</td><td className="text-center">SMA20 &gt; SMA50</td><td className="text-center">SMA20 &lt; SMA50</td></tr>
+                    <tr><td className="px-3 py-1.5 font-medium">1-Month %</td><td className="text-center">&gt; +5%</td><td className="text-center">&lt; -5%</td></tr>
+                    <tr><td className="px-3 py-1.5 font-medium">OBV Trend</td><td className="text-center">UP (institutional buying)</td><td className="text-center">DOWN (distribution)</td></tr>
+                    <tr><td className="px-3 py-1.5 font-medium">RSI (14)</td><td className="text-center">&le; 35</td><td className="text-center">&ge; 65</td></tr>
+                    <tr><td className="px-3 py-1.5 font-medium">3M % Guard</td><td className="text-center">&lt; -30% (capitulation)</td><td className="text-center">&gt; +30% (overextended)</td></tr>
+                    <tr className="bg-blue-50/50"><td className="px-3 py-1.5 font-medium italic">SMA 50/200 Regime</td><td className="text-center">Golden Cross (+1 bias)</td><td className="text-center">Death Cross (-1 bias)</td></tr>
+                  </tbody>
+                </table>
+                <div className="px-3 py-1 bg-gray-50 text-[10px] text-gray-500">SELL requires -4 of 6 votes (stricter) — avoids selling in bull markets</div>
+              </div>
+
+              {/* Quarter */}
+              <div className="border border-gray-100 rounded-lg overflow-hidden">
+                <div className="bg-gray-50 px-3 py-2 text-xs font-bold text-gray-700 uppercase">Quarter — Long-term Investor <span className="text-green-600 normal-case">(64% BUY win rate at 180D, PF 2.0)</span></div>
+                <table className="w-full text-xs">
+                  <thead><tr className="border-b border-gray-100">
+                    <th className="text-left px-3 py-1.5 text-gray-500 font-semibold">Indicator</th>
+                    <th className="text-center px-2 py-1.5 text-green-700 font-semibold">+1 (Bullish Trend)</th>
+                    <th className="text-center px-2 py-1.5 text-red-700 font-semibold">-1 (Bearish Trend)</th>
+                  </tr></thead>
+                  <tbody className="divide-y divide-gray-50">
+                    <tr><td className="px-3 py-1.5 font-medium">SMA 50/200</td><td className="text-center">Golden Cross</td><td className="text-center">Death Cross</td></tr>
+                    <tr><td className="px-3 py-1.5 font-medium">52-Week High</td><td className="text-center">Within 10% (strength)</td><td className="text-center">&gt; 30% off (broken)</td></tr>
+                    <tr><td className="px-3 py-1.5 font-medium">6-Month %</td><td className="text-center">&gt; +15%</td><td className="text-center">&lt; -15%</td></tr>
+                    <tr><td className="px-3 py-1.5 font-medium">1-Year %</td><td className="text-center">&gt; +20%</td><td className="text-center">&lt; -20%</td></tr>
+                    <tr><td className="px-3 py-1.5 font-medium">OBV Trend</td><td className="text-center">UP (accumulation)</td><td className="text-center">DOWN (distribution)</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <p className="text-[10px] text-gray-400 italic">
+              Backtest: 171 US stocks, Jan 2024 &ndash; Mar 2026, 59,923 total signals. Win rate = % of signals where forward return matched predicted direction.
+              Profit Factor = sum of winning returns / sum of losing returns. PF &gt; 1.0 = profitable.
+              These signals are for educational/informational purposes only and do not constitute financial advice. Past performance does not guarantee future results.
+            </p>
+          </div>
+        </details>
+
+        <p className="text-xs text-gray-400 pt-2 border-t border-gray-100">
+          Technical indicators pre-computed nightly from price data. Not financial advice.
+        </p>
+      </div>
+    </>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Fundamental Screener Tab (preserved from original)
+// ══════════════════════════════════════════════════════════════════════════════
+
+function FundamentalTab() {
+  const [exchange, setExchange] = useState("US");
+  const [signal,   setSignal]   = useState("");
+  const [sector,   setSector]   = useState("");
+  const [minScore, setMinScore] = useState("0.5");
+  const [maxRisk,  setMaxRisk]  = useState("");
+  const [limit,    setLimit]    = useState(50);
+  const [rows,     setRows]     = useState<FundRow[]>([]);
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState<string | null>(null);
+
+  const SECTOR_OPTIONS = [
+    "", "Technology", "Healthcare", "Financials", "Energy", "Materials",
+    "Consumer Discretionary", "Consumer Staples", "Industrials",
+    "Real Estate", "Utilities", "Communication Services",
+  ];
+
+  const runScreener = useCallback(async () => {
+    setLoading(true); setError(null);
+    try {
+      const p = new URLSearchParams({ exchange, limit: String(limit) });
+      if (signal)   p.set("signal", signal);
+      if (sector)   p.set("sector", sector);
+      if (minScore) p.set("min_score", minScore);
+      if (maxRisk)  p.set("max_tech_risk", maxRisk);
+      const res = await fetch(`/api/screener?${p.toString()}`);
+      const json = await res.json();
+      if (json.ok) setRows(json.data ?? []);
+      else setError(json.error ?? "Failed");
+    } catch (e) { setError(String(e)); }
+    finally { setLoading(false); }
+  }, [exchange, signal, sector, minScore, maxRisk, limit]);
+
+  useEffect(() => { runScreener(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <>
+      <div className="w-full" style={{ background: "linear-gradient(135deg, #2e8b57, #3cb371)", padding: "16px 0 20px" }}>
+        <div className="max-w-7xl mx-auto px-8">
+          <div className="flex items-end gap-3 flex-wrap">
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-semibold text-white/70 uppercase">Exchange</label>
+              <div className="flex gap-1">
+                {["US", "ASX"].map((ex) => (
+                  <button key={ex} onClick={() => setExchange(ex)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                    style={exchange === ex ? { background: "#fd8412", color: "#fff" } : { background: "rgba(255,255,255,0.2)", color: "#fff" }}>
+                    {ex === "US" ? "🇺🇸 US" : "🇦🇺 ASX"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-semibold text-white/70 uppercase">AI Signal</label>
+              <select value={signal} onChange={(e) => setSignal(e.target.value)}
+                className="text-xs border-0 rounded-lg px-2 py-1.5 bg-white/90 text-gray-700">
+                <option value="">All</option>
+                <option value="STRONG_BUY">STRONG BUY</option>
+                <option value="BUY">BUY</option>
+                <option value="NEUTRAL">NEUTRAL</option>
+                <option value="SELL">SELL</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-semibold text-white/70 uppercase">Sector</label>
+              <select value={sector} onChange={(e) => setSector(e.target.value)}
+                className="text-xs border-0 rounded-lg px-2 py-1.5 bg-white/90 text-gray-700 min-w-[140px]">
+                <option value="">All sectors</option>
+                {SECTOR_OPTIONS.filter(Boolean).map((s) => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-semibold text-white/70 uppercase">Min Score</label>
+              <select value={minScore} onChange={(e) => setMinScore(e.target.value)}
+                className="text-xs border-0 rounded-lg px-2 py-1.5 bg-white/90 text-gray-700">
+                <option value="">Any</option>
+                <option value="0.5">≥ 0.5</option>
+                <option value="0.2">≥ 0.2</option>
+                <option value="0.0">≥ 0.0</option>
+                <option value="-0.2">≥ -0.2</option>
+              </select>
+            </div>
+            <button onClick={runScreener} disabled={loading}
+              className="px-5 py-2 rounded-xl text-xs font-bold hover:brightness-110 disabled:opacity-60 shadow-md"
+              style={{ background: "#fd8412", color: "#fff" }}>
+              {loading ? "⟳ Scanning…" : "🔍 Screen"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-8 py-4 space-y-3">
+        {error && <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">{error}</div>}
+        {loading && <div className="flex justify-center py-20"><div className="text-3xl animate-pulse">📊</div></div>}
         {!loading && rows.length > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
-            <table className="w-full min-w-[900px]">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
+            <table className="w-full min-w-[900px] text-xs">
               <thead>
                 <tr style={{ background: "#f8fafc", borderBottom: "2px solid #e2e8f0" }}>
-                  <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-5 py-3 w-24">
-                    Ticker
-                  </th>
-                  <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-3 py-3">
-                    Company
-                  </th>
-                  <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-3 py-3">
-                    Sector
-                  </th>
-                  <th className="text-center text-xs font-bold text-gray-500 uppercase tracking-wide px-3 py-3">
-                    AI Signal
-                  </th>
-                  <th className="text-right px-3 py-3">
-                    <div className="text-xs font-bold text-gray-500 uppercase tracking-wide">Score</div>
-                    <div className="text-[10px] text-gray-400 font-normal normal-case">−1.0 → +1.0</div>
-                  </th>
-                  <th className="text-right px-3 py-3">
-                    <div className="text-xs font-bold text-gray-500 uppercase tracking-wide">Val</div>
-                    <div className="text-[10px] text-gray-400 font-normal normal-case">cheap vs peers</div>
-                  </th>
-                  <th className="text-right px-3 py-3">
-                    <div className="text-xs font-bold text-gray-500 uppercase tracking-wide">Qual</div>
-                    <div className="text-[10px] text-gray-400 font-normal normal-case">margins &amp; ROE</div>
-                  </th>
-                  <th className="text-right px-3 py-3">
-                    <div className="text-xs font-bold text-gray-500 uppercase tracking-wide">Growth</div>
-                    <div className="text-[10px] text-gray-400 font-normal normal-case">rev &amp; earnings</div>
-                  </th>
-                  <th className="text-right px-3 py-3">
-                    <div className="text-xs font-bold text-gray-500 uppercase tracking-wide">Macro</div>
-                    <div className="text-[10px] text-gray-400 font-normal normal-case">sector env.</div>
-                  </th>
-                  <th className="text-center px-3 py-3">
-                    <div className="text-xs font-bold text-gray-500 uppercase tracking-wide">Analyst</div>
-                    <div className="text-[10px] text-gray-400 font-normal normal-case">Wall St. consensus</div>
-                  </th>
-                  <th className="text-right px-3 py-3">
-                    <div className="text-xs font-bold text-gray-500 uppercase tracking-wide">Upside</div>
-                    <div className="text-[10px] text-gray-400 font-normal normal-case">to price target</div>
-                  </th>
-                  <th className="text-center px-3 py-3">
-                    <div className="text-xs font-bold text-gray-500 uppercase tracking-wide">AI Risk</div>
-                    <div className="text-[10px] text-gray-400 font-normal normal-case">disruption</div>
-                  </th>
+                  <th className="text-left px-3 py-2 font-bold text-gray-500 uppercase">Ticker</th>
+                  <th className="text-left px-3 py-2 font-bold text-gray-500 uppercase">Company</th>
+                  <th className="text-left px-3 py-2 font-bold text-gray-500 uppercase">Sector</th>
+                  <th className="text-center px-3 py-2 font-bold text-gray-500 uppercase">Signal</th>
+                  <th className="text-right px-3 py-2 font-bold text-gray-500 uppercase">Score</th>
+                  <th className="text-right px-3 py-2 font-bold text-gray-500 uppercase">Val</th>
+                  <th className="text-right px-3 py-2 font-bold text-gray-500 uppercase">Qual</th>
+                  <th className="text-right px-3 py-2 font-bold text-gray-500 uppercase">Growth</th>
+                  <th className="text-right px-3 py-2 font-bold text-gray-500 uppercase">Macro</th>
+                  <th className="text-center px-3 py-2 font-bold text-gray-500 uppercase">Analyst</th>
+                  <th className="text-right px-3 py-2 font-bold text-gray-500 uppercase">Upside</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row, idx) => (
-                  <tr
-                    key={row.ticker}
-                    className="border-b border-gray-50 hover:bg-[#f0f7f1] transition-colors cursor-pointer"
-                    style={idx % 2 === 0 ? {} : { background: "#fafafa" }}
-                  >
-                    <td className="px-5 py-3">
-                      <Link
-                        href={`/ticker/${row.ticker}/intel`}
-                        className="font-bold text-[#2e8b57] hover:text-[#1a6e3e] transition-colors text-sm hover:underline"
-                      >
-                        {row.ticker}
-                      </Link>
-                      <div className="text-xs text-gray-400">{row.exchange}</div>
+                {rows.map((r, idx) => (
+                  <tr key={r.ticker} className="border-b border-gray-50 hover:bg-[#f0f7f1]"
+                    style={idx % 2 ? { background: "#fafafa" } : {}}>
+                    <td className="px-3 py-2">
+                      <Link href={`/ticker/${r.ticker}/intel`}
+                        className="font-bold text-[#2e8b57] hover:underline text-sm">{r.ticker}</Link>
                     </td>
-                    <td className="px-3 py-3 max-w-[160px]">
-                      <span className="text-sm text-gray-700 truncate block" title={row.company_name ?? ""}>
-                        {row.company_name ?? "—"}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3">
-                      <span className="text-xs text-gray-500">{row.sector ?? "—"}</span>
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      <SignalChip signal={row.fundamental_signal} />
-                    </td>
-                    <td className="px-3 py-3">
-                      <ScoreBar value={row.fundamental_score} />
-                    </td>
-                    <td className="px-3 py-3">
-                      <ScoreBar value={row.valuation_score} />
-                    </td>
-                    <td className="px-3 py-3">
-                      <ScoreBar value={row.quality_score} range={[0, 1]} />
-                    </td>
-                    <td className="px-3 py-3">
-                      <ScoreBar value={row.growth_score} range={[0, 1]} />
-                    </td>
-                    <td className="px-3 py-3">
-                      <ScoreBar value={row.macro_score} />
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      <span className="text-xs text-gray-600 font-medium">{row.analyst_consensus ?? "—"}</span>
-                    </td>
-                    <td className="px-3 py-3 text-right">
-                      {row.analyst_upside_pct !== null ? (
-                        <span
-                          className="text-sm font-semibold tabular-nums"
-                          style={{ color: row.analyst_upside_pct >= 0 ? "#15803d" : "#991b1b" }}
-                        >
-                          {row.analyst_upside_pct >= 0 ? "+" : ""}{row.analyst_upside_pct.toFixed(1)}%
-                        </span>
-                      ) : (
-                        <span className="text-gray-300 text-sm">—</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      <RiskChip risk={row.tech_disruption_risk} />
+                    <td className="px-3 py-2 text-gray-700 max-w-[160px] truncate">{r.company_name ?? "—"}</td>
+                    <td className="px-3 py-2 text-gray-500">{r.sector ?? "—"}</td>
+                    <td className="px-3 py-2 text-center"><SignalChip signal={r.fundamental_signal} /></td>
+                    <td className="px-3 py-2"><ScoreBar value={r.fundamental_score} /></td>
+                    <td className="px-3 py-2"><ScoreBar value={r.valuation_score} /></td>
+                    <td className="px-3 py-2"><ScoreBar value={r.quality_score} range={[0, 1]} /></td>
+                    <td className="px-3 py-2"><ScoreBar value={r.growth_score} range={[0, 1]} /></td>
+                    <td className="px-3 py-2"><ScoreBar value={r.macro_score} /></td>
+                    <td className="px-3 py-2 text-center text-gray-600 font-medium">{r.analyst_consensus ?? "—"}</td>
+                    <td className="px-3 py-2 text-right">
+                      {r.analyst_upside_pct !== null
+                        ? <span className="font-semibold" style={{ color: r.analyst_upside_pct >= 0 ? "#15803d" : "#991b1b" }}>
+                            {r.analyst_upside_pct >= 0 ? "+" : ""}{r.analyst_upside_pct.toFixed(1)}%
+                          </span>
+                        : <span className="text-gray-300">—</span>}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-
-            {/* Table footer hint */}
-            <div className="px-5 py-3 border-t border-gray-50 bg-gray-50 flex items-center justify-between">
-              <p className="text-xs text-gray-400">
-                Click any ticker to open the full AI analysis (Technical Signal + Chart Vision + Fundamental Analysis)
-              </p>
-              <p className="text-xs text-gray-400">
-                {rows.length} result{rows.length !== 1 ? "s" : ""}
-              </p>
-            </div>
           </div>
         )}
-
-        {/* No results */}
-        {!loading && ran && rows.length === 0 && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
-            <div className="text-4xl mb-4">🔍</div>
-            <p className="font-semibold text-gray-700 mb-2">No stocks match your current filters</p>
-            <p className="text-sm text-gray-400 max-w-md mx-auto">
-              Try relaxing the filters — remove the sector, lower the min score, or change the signal.
-              <br />
-              Fundamental data is computed nightly; new tickers appear after their first batch run.
-            </p>
+        {!loading && rows.length === 0 && !error && (
+          <div className="bg-white rounded-xl border p-12 text-center">
+            <p className="text-gray-500 text-sm">No stocks match filters. Try relaxing criteria.</p>
           </div>
         )}
-
-        {/* Initial state */}
-        {!ran && !loading && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
-            <div className="text-4xl mb-4">📊</div>
-            <p className="text-gray-500 text-sm">
-              Select your filters above and click <strong>Screen stocks</strong> to find opportunities.
-            </p>
-          </div>
-        )}
-
-        <p className="text-sm text-gray-500 pb-4 border-t border-gray-100 pt-4">
-          ⚠️ AI-computed fundamental scores are for research only — not financial advice. Scores are computed nightly from yfinance data and Gemini grounding. Always do your own research before making investment decisions.
-        </p>
       </div>
-    </div>
+    </>
   );
 }
