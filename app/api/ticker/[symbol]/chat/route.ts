@@ -12,6 +12,7 @@
 
 import { NextResponse } from "next/server";
 import { UNIVERSE_ALL } from "@/lib/universe";
+import { lookupStock } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
 import { getInvestorProfileOrDefault, buildProfileContext } from "@/lib/investorProfile";
 
@@ -49,9 +50,12 @@ export async function POST(
     return NextResponse.json({ ok: false, error: "message is required" }, { status: 400 });
   }
 
-  // Resolve exchange for this ticker
+  // Resolve exchange for this ticker (universe → DB fallback)
   const tickerInfo = UNIVERSE_ALL.find((t) => t.symbol === symbol);
-  const exchange   = tickerInfo?.exchange ?? "US";
+  let exchange = tickerInfo?.exchange ?? "";
+  if (!exchange) {
+    try { const d = await lookupStock(symbol); exchange = d?.exchange ?? "US"; } catch { exchange = "US"; }
+  }
 
   // Get authenticated user — load investor profile for personalised AI responses
   let userId      = 0;          // legacy int for Python session history key

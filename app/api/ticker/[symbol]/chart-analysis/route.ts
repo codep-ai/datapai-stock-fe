@@ -17,6 +17,7 @@
 
 import { NextResponse } from "next/server";
 import { UNIVERSE_ALL } from "@/lib/universe";
+import { lookupStock } from "@/lib/db";
 import { getCachedChartAnalysis, upsertChartAnalysis } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
 import { checkAiSignalAccess } from "@/lib/plan-limits";
@@ -93,8 +94,11 @@ export async function POST(
 
   // ── 3. Resolve exchange/suffix ────────────────────────────────────────────
   const tickerInfo = UNIVERSE_ALL.find((t) => t.symbol === symbol);
-  const exchange   = tickerInfo?.exchange ?? "US";
-  const suffix     = exchange === "ASX" ? ".AX" : "";
+  let exchange = tickerInfo?.exchange ?? "";
+  if (!exchange) {
+    try { const d = await lookupStock(symbol); exchange = d?.exchange ?? "US"; } catch { exchange = "US"; }
+  }
+  const suffix = exchange === "ASX" ? ".AX" : "";
 
   // ── 4. Call Python backend ────────────────────────────────────────────────
   try {
