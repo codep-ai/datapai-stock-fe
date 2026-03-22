@@ -132,7 +132,7 @@ export default async function TickerPage({
             <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
               <h2 className="text-lg font-bold text-gray-800 mb-4"
                 style={{ fontFamily: "var(--font-rajdhani)" }}>90-Day Price Chart</h2>
-              <PriceChart prices={prices} />
+              <PriceChart data={prices} exchange="INDEX" />
             </div>
           )}
 
