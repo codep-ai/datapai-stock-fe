@@ -46,7 +46,7 @@ function envBool(key: string, fallback: boolean): boolean {
 
 const BASE_LIMITS: Record<string, PlanLimits> = {
   watch: {
-    watchlistStocks: 5,
+    watchlistStocks: 10,
     scansPerDay:     1,
     aiSignals:       false,
     apiAccess:       false,

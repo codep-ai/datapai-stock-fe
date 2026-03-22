@@ -36,7 +36,7 @@ const TIERS: Tier[] = [
     cta: { label: "Start free", href: "/register", style: "outline" as const },
     badge: null,
     features: [
-      { text: "5 stocks monitored", note: "US & ASX" },
+      { text: "10 stocks monitored", note: "US & ASX" },
       { text: "Weekly IR page scan", note: null },
       { text: "Language shift alerts", note: "commitment · hedging · risk" },
       { text: "30-day scan history", note: null },
