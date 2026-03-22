@@ -30,7 +30,7 @@ export async function POST(
   { params }: { params: Promise<{ symbol: string }> }
 ) {
   const { symbol: rawSymbol } = await params;
-  const symbol    = rawSymbol.toUpperCase();
+  const symbol    = decodeURIComponent(rawSymbol).toUpperCase();
   const url       = new URL(req.url);
   const skipCache = url.searchParams.has("fresh") || url.searchParams.has("force");
 
