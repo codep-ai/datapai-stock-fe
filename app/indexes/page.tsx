@@ -103,21 +103,54 @@ export default function IndexesPage() {
     indexes: data.filter((d) => d.region === r),
   })).filter((g) => g.indexes.length > 0);
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">Global Market Indexes</h1>
-        <p className="text-sm text-gray-500 mb-6">
-          16 major indexes across 4 regions — updated daily with full technical analysis
-        </p>
+  // Compute quick market summary for hero
+  const totalUp = data.filter((d) => (d.change_1d_pct ?? 0) > 0).length;
+  const totalDown = data.filter((d) => (d.change_1d_pct ?? 0) < 0).length;
 
+  return (
+    <div>
+      {/* ── Hero ── */}
+      <div
+        className="w-full flex flex-col justify-center"
+        style={{
+          background: "linear-gradient(45deg, seagreen, darkseagreen)",
+          paddingTop: "28px",
+          paddingBottom: "28px",
+        }}
+      >
+        <div className="max-w-7xl mx-auto px-8 space-y-3">
+          <h1
+            className="text-3xl font-bold text-white drop-shadow-sm"
+            style={{ fontFamily: "var(--font-rajdhani)" }}
+          >
+            Global Market Indexes
+          </h1>
+          <p className="text-white/80 text-sm">
+            16 major indexes across 4 regions — daily OHLCV with RSI, MACD, SMA cross analysis
+          </p>
+          {!loading && data.length > 0 && (
+            <div className="flex gap-4 text-sm">
+              <span className="bg-white/20 text-white px-3 py-1 rounded-full font-semibold">
+                {totalUp} up
+              </span>
+              <span className="bg-white/20 text-white px-3 py-1 rounded-full font-semibold">
+                {totalDown} down
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Content ── */}
+      <div className="max-w-7xl mx-auto px-8 py-6">
         {loading ? (
-          <div className="text-center py-20 text-gray-400">Loading indexes...</div>
+          <div className="flex justify-center py-20"><div className="text-3xl animate-pulse">📊</div></div>
         ) : (
           <div className="space-y-8">
             {grouped.map((g) => (
               <div key={g.region}>
-                <h2 className="text-lg font-semibold text-gray-800 mb-3">
+                <h2 className="text-lg font-semibold text-gray-800 mb-3"
+                  style={{ fontFamily: "var(--font-rajdhani)" }}>
                   {g.flag} {g.label}
                 </h2>
                 <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
