@@ -86,6 +86,67 @@ export default async function TickerPage({
   const companyName = ticker?.name ?? dirEntry?.name ?? sym;
   const defaultUrl = ticker?.url ?? resolveTickerUrl(sym, exchangeLabel);
 
+  // ── Market Index: skip scan check, render index detail page ──────────────
+  const isIndex = exchangeLabel === "INDEX";
+  if (isIndex && !ticker) {
+    const prices = await fetchPrices(sym, 90, "INDEX");
+    return (
+      <div>
+        <div
+          className="w-full"
+          style={{ background: "linear-gradient(45deg, seagreen, darkseagreen)", paddingTop: "32px", paddingBottom: "36px" }}
+        >
+          <div className="max-w-5xl mx-auto px-8 space-y-4">
+            <Link href="/indexes" className="text-white/70 hover:text-white text-sm font-medium inline-block">
+              ← Back to Indexes
+            </Link>
+            <div className="flex items-end gap-4 flex-wrap">
+              <h1 className="text-5xl font-bold text-white drop-shadow-sm"
+                style={{ fontFamily: "var(--font-rajdhani)" }}>{companyName}</h1>
+              <span className="text-xl text-white/60 font-light pb-1">{sym}</span>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-white/60 text-sm px-3 py-1 rounded-full border border-white/20 bg-white/10">
+                {dirEntry?.exchange === "INDEX" ? (dirEntry as unknown as { region?: string })?.region ?? "Global" : "Index"}
+              </span>
+              {prices.length > 0 && (
+                <>
+                  <span className="text-white text-xl font-bold">{prices[prices.length - 1].close.toLocaleString()}</span>
+                  {prices.length >= 2 && (() => {
+                    const chg = ((prices[prices.length - 1].close - prices[prices.length - 2].close) / prices[prices.length - 2].close) * 100;
+                    return (
+                      <span className={`text-sm font-semibold px-2 py-0.5 rounded-full ${chg >= 0 ? "bg-green-500/20 text-green-100" : "bg-red-500/20 text-red-200"}`}>
+                        {chg >= 0 ? "+" : ""}{chg.toFixed(2)}%
+                      </span>
+                    );
+                  })()}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-5xl mx-auto px-8 py-8 space-y-6">
+          {/* Price Chart */}
+          {prices.length > 0 && (
+            <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+              <h2 className="text-lg font-bold text-gray-800 mb-4"
+                style={{ fontFamily: "var(--font-rajdhani)" }}>90-Day Price Chart</h2>
+              <PriceChart prices={prices} />
+            </div>
+          )}
+
+          {/* Technical Analysis */}
+          <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+            <h2 className="text-lg font-bold text-gray-800 mb-4"
+              style={{ fontFamily: "var(--font-rajdhani)" }}>Technical Analysis</h2>
+            <TechAnalyticsPanel symbol={sym} exchange="INDEX" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ── Unknown ticker: check if we already have scan data in DB ─────────────
   if (!ticker) {
     // If there are existing snapshots from a previous on-demand scan,
