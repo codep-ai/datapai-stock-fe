@@ -1,5 +1,6 @@
 import { getLatestAnalysesBySignalType, getWatchlist, lookupStock } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
+import { getLang } from "@/lib/getLang";
 import AlertsClient from "./AlertsClient";
 
 export const dynamic = "force-dynamic";
@@ -11,15 +12,16 @@ export default async function AlertsPage({
 }) {
   const params = await searchParams;
   const watchlistOnly = params.watchlist === "true";
+  const lang = await getLang();
 
   const contentOnly = await getLatestAnalysesBySignalType("CONTENT_CHANGE", 100);
   const allSignals = await getLatestAnalysesBySignalType(null, 100);
 
-  // Build name map from DB for all unique tickers in results
+  // Build name map from DB for all unique tickers in results (localized)
   const allTickers = new Set([...contentOnly.map((a) => a.ticker), ...allSignals.map((a) => a.ticker)]);
   const nameEntries = await Promise.all(
     [...allTickers].map(async (sym) => {
-      const entry = await lookupStock(sym);
+      const entry = await lookupStock(sym, lang);
       return [sym, entry?.name ?? sym] as [string, string];
     })
   );

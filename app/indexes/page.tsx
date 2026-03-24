@@ -23,12 +23,25 @@ interface IndexRow {
 }
 
 const REGION_ORDER = ["US", "ASX", "ASIA", "EU"];
-const REGION_LABELS: Record<string, string> = {
-  US: "United States",
-  ASX: "Australia",
-  ASIA: "Asia Pacific",
-  EU: "Europe",
+
+const REGION_LABELS_I18N: Record<string, Record<string, string>> = {
+  US:   { en: "United States", zh: "美国", "zh-TW": "美國", ja: "米国", ko: "미국", vi: "Hoa Kỳ", th: "สหรัฐอเมริกา", ms: "Amerika Syarikat" },
+  ASX:  { en: "Australia", zh: "澳大利亚", "zh-TW": "澳洲", ja: "オーストラリア", ko: "호주", vi: "Úc", th: "ออสเตรเลีย", ms: "Australia" },
+  ASIA: { en: "Asia Pacific", zh: "亚太地区", "zh-TW": "亞太地區", ja: "アジア太平洋", ko: "아시아 태평양", vi: "Châu Á - Thái Bình Dương", th: "เอเชียแปซิฟิก", ms: "Asia Pasifik" },
+  EU:   { en: "Europe", zh: "欧洲", "zh-TW": "歐洲", ja: "欧州", ko: "유럽", vi: "Châu Âu", th: "ยุโรป", ms: "Eropah" },
 };
+
+function getLangFromCookie(): string {
+  if (typeof document === "undefined") return "en";
+  const match = document.cookie.match(/(?:^|;\s*)lang=([^;]*)/);
+  return match?.[1] ?? "en";
+}
+
+function regionLabel(region: string): string {
+  const lang = getLangFromCookie();
+  return REGION_LABELS_I18N[region]?.[lang] ?? REGION_LABELS_I18N[region]?.en ?? region;
+}
+
 const REGION_FLAGS: Record<string, string> = {
   US: "\u{1F1FA}\u{1F1F8}",
   ASX: "\u{1F1E6}\u{1F1FA}",
@@ -98,7 +111,7 @@ export default function IndexesPage() {
 
   const grouped = REGION_ORDER.map((r) => ({
     region: r,
-    label: REGION_LABELS[r] || r,
+    label: regionLabel(r),
     flag: REGION_FLAGS[r] || "",
     indexes: data.filter((d) => d.region === r),
   })).filter((g) => g.indexes.length > 0);

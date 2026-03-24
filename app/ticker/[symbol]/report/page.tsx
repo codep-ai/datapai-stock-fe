@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getTickerSnapshots, getTickerAnalyses, getTickerDiffs, getLatestAnalysisWithAgentContent, getTickerScanCount, lookupStock } from "@/lib/db";
+import { getLang } from "@/lib/getLang";
 import { agentSignalLabel, validationLabel } from "@/lib/agent";
 import { PRIVATE_LLM_ENABLED } from "@/lib/llm";
 
@@ -32,9 +33,10 @@ export default async function TickerReportPage({
 }) {
   const { symbol } = await params;
   const sym = symbol.toUpperCase();
+  const lang = await getLang();
 
   // Look up stock from DB; fall back to scan history for unknown tickers
-  const dirEntry = await lookupStock(sym);
+  const dirEntry = await lookupStock(sym, lang);
   const snapsForCheck = !dirEntry ? await getTickerSnapshots(sym, 1) : null;
 
   // 404 only if completely unknown with no scan history

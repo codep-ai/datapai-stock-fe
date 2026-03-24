@@ -5,8 +5,11 @@
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getWatchlist, getAlertSummaryMap, getLatestPricesForWatchlist, getMaterialEventsForTickers, getStockSynthesisFlexible, type StockSynthesis } from "@/lib/db";
+import { getWatchlist, getAlertSummaryMap, getLatestPricesForWatchlist, getMaterialEventsForTickers, getStockSynthesisFlexible, getLocalizedNames, type StockSynthesis } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
+import { getLang } from "@/lib/getLang";
+import { loadTranslations } from "@/lib/i18n";
+import { t } from "@/lib/translations";
 import LiveScanProgress from "../components/LiveScanProgress";
 import TickerSearch from "../components/TickerSearch";
 import WatchlistButton from "../components/WatchlistButton";
@@ -20,6 +23,8 @@ export default async function WatchlistPage() {
   if (!user) {
     redirect("/login?redirect=/watchlist");
   }
+  const lang = await getLang();
+  const labels = await loadTranslations(lang);
 
   const items = await getWatchlist(user.userId);
   const [alertMap, priceMap, newsMap] = await Promise.all([
@@ -52,13 +57,13 @@ export default async function WatchlistPage() {
         }}
       >
         <div className="max-w-6xl mx-auto px-6 space-y-3">
-          <h1 className="text-2xl font-bold text-white">⭐ My Watchlist</h1>
+          <h1 className="text-2xl font-bold text-white">⭐ {t(labels, "watchlist_title")}</h1>
           <p className="text-white/80 text-sm font-medium">
-            Spot language shifts on company websites before they move stock prices —{" "}
-            <span className="text-white font-bold">9,000+ US &amp; ASX stocks</span>{" "}
-            covered · powered by AI agents
+            {t(labels, "hero_spot_shifts")} —{" "}
+            <span className="text-white font-bold">{t(labels, "hero_stocks_covered")}</span>{" "}
+            {t(labels, "hero_covered_label")}
           </p>
-          <TickerSearch showWatchlistAction />
+          <TickerSearch showWatchlistAction analyseLabel={t(labels, "analyse_btn")} lang={lang} />
 
           <div className="flex gap-3 items-center flex-wrap">
             <Link
@@ -66,7 +71,7 @@ export default async function WatchlistPage() {
               className="px-6 py-2.5 rounded-lg font-bold uppercase tracking-wide transition-all hover:-translate-y-0.5"
               style={{ fontSize: "0.9rem", background: "#fd8412", color: "#fff" }}
             >
-              ⚡ View My Alerts →
+              ⚡ {t(labels, "watchlist_view_alerts")} →
             </Link>
             <LiveScanProgress watchlist={true} heroButton />
           </div>
@@ -80,21 +85,25 @@ export default async function WatchlistPage() {
         {items.length === 0 && (
           <div className="text-center py-20 space-y-4">
             <div className="text-6xl">☆</div>
-            <h2 className="text-2xl font-bold text-gray-600">Your watchlist is empty</h2>
+            <h2 className="text-2xl font-bold text-gray-600">{t(labels, "watchlist_empty")}</h2>
             <p className="text-gray-400 text-lg max-w-md mx-auto">
-              Search for a ticker above, visit any stock page, and click{" "}
-              <strong>⭐ Add to Watchlist</strong> to start monitoring it.
+              {t(labels, "watchlist_empty_desc")}
             </p>
             <div className="flex justify-center gap-4 pt-4">
               <Link href="/"
                 className="px-6 py-3 rounded-lg font-semibold text-white"
                 style={{ background: "#2e8b57" }}>
-                Browse US Stocks →
+                🇺🇸 US →
               </Link>
               <Link href="/asx"
                 className="px-6 py-3 rounded-lg font-semibold text-white"
-                style={{ background: "#6366f1" }}>
-                Browse ASX Stocks →
+                style={{ background: "#003087" }}>
+                🇦🇺 ASX →
+              </Link>
+              <Link href="/vietnam"
+                className="px-6 py-3 rounded-lg font-semibold text-white"
+                style={{ background: "#c8102e" }}>
+                🇻🇳 HOSE →
               </Link>
             </div>
           </div>
