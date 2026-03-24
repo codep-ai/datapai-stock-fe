@@ -25,6 +25,7 @@ export default function TickerSearch({
   analyseLabel = "Analyse",
   noResultsLabel = "No stocks found for",
   resultsLabel = "results · Search by ticker or company name",
+  lang = "en",
 }: {
   placeholder?: string;
   intelMode?: boolean;
@@ -35,6 +36,7 @@ export default function TickerSearch({
   analyseLabel?: string;
   noResultsLabel?: string;
   resultsLabel?: string;
+  lang?: string;
 } = {}) {
   const opts: MarketOption[] = markets ?? [
     { code: "US", label: "US" },
@@ -79,7 +81,7 @@ export default function TickerSearch({
       debounceRef.current = setTimeout(async () => {
         try {
           const res = await fetch(
-            `/api/stocks/lookup?q=${encodeURIComponent(q)}&exchange=${ex}`
+            `/api/stocks/lookup?q=${encodeURIComponent(q)}&exchange=${ex}&lang=${encodeURIComponent(lang)}`
           );
           if (res.ok) {
             const data = await res.json();

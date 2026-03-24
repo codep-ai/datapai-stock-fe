@@ -61,12 +61,13 @@ export async function GET(req: Request) {
   const symbol = searchParams.get("symbol")?.toUpperCase().trim();
   const query  = searchParams.get("q")?.toUpperCase().trim();
   const exchange = searchParams.get("exchange")?.toUpperCase().trim();
+  const lang   = searchParams.get("lang") ?? "en";
 
   // ── Prefix search (autocomplete) ──────────────────────────────────────────
   if (query && query.length >= 1) {
     const total = await countStockDirectory();
     if (total > 0) {
-      const raw = await searchStocks(query, exchange || undefined);
+      const raw = await searchStocks(query, exchange || undefined, lang);
       const results = await enrichWithPrices(raw as StockResult[]);
       return NextResponse.json({ results, source: "db" });
     }
@@ -84,7 +85,7 @@ export async function GET(req: Request) {
 
   const total = await countStockDirectory();
   if (total > 0) {
-    const result = await lookupStock(symbol);
+    const result = await lookupStock(symbol, lang);
     if (result) {
       const enriched = await enrichWithPrices([result as StockResult]);
       return NextResponse.json({ ...enriched[0], source: "db" });

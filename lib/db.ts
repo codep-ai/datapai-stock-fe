@@ -492,14 +492,21 @@ export async function getCachedPrices(ticker: string, limit = 30): Promise<{ dat
 
 // ─── Stock directory ──────────────────────────────────────────────────────
 
-export async function lookupStock(symbol: string): Promise<StockDirectoryEntry | null> {
+export async function lookupStock(symbol: string, lang = "en"): Promise<StockDirectoryEntry | null> {
   const upper = symbol.toUpperCase();
-  // Check stock_directory first
-  const rows = await q<StockDirectoryEntry>(
+  // Check stock_directory first — filter by lang, fallback to 'en'
+  let rows = await q<StockDirectoryEntry>(
     `SELECT symbol, name, exchange, sector FROM datapai.stock_directory
-     WHERE symbol=$1 ORDER BY exchange LIMIT 1`,
-    [upper]
+     WHERE symbol=$1 AND lang=$2 ORDER BY exchange LIMIT 1`,
+    [upper, lang]
   );
+  if (!rows[0] && lang !== "en") {
+    rows = await q<StockDirectoryEntry>(
+      `SELECT symbol, name, exchange, sector FROM datapai.stock_directory
+       WHERE symbol=$1 AND lang='en' ORDER BY exchange LIMIT 1`,
+      [upper]
+    );
+  }
   if (rows[0]) return rows[0];
   // Fallback: ticker_universe (covers indexes like ^GSPC, ^DJI, 000001.SS)
   const uniRows = await q<{ ticker: string; company_name: string; exchange: string }>(
@@ -518,31 +525,30 @@ export async function lookupStock(symbol: string): Promise<StockDirectoryEntry |
   return null;
 }
 
-export async function searchStocks(query: string, exchange?: string): Promise<StockDirectoryEntry[]> {
+export async function searchStocks(query: string, exchange?: string, lang = "en"): Promise<StockDirectoryEntry[]> {
   const upper = query.toUpperCase();
   const like = `${upper}%`;
   const nameLike = `%${upper}%`;
-  // Search by symbol prefix OR company name (case-insensitive)
-  // Symbol prefix matches rank first, then company name matches
+  // Search by symbol prefix OR company name (case-insensitive), filtered by lang
   if (exchange) {
     return q<StockDirectoryEntry>(
       `SELECT symbol, name, exchange, sector FROM datapai.stock_directory
-       WHERE exchange=$2 AND (symbol LIKE $1 OR UPPER(name) LIKE $3)
+       WHERE exchange=$2 AND lang=$4 AND (symbol LIKE $1 OR UPPER(name) LIKE $3)
        ORDER BY
          CASE WHEN symbol LIKE $1 THEN 0 ELSE 1 END,
          LENGTH(symbol), symbol
        LIMIT 20`,
-      [like, exchange, nameLike]
+      [like, exchange, nameLike, lang]
     );
   }
   return q<StockDirectoryEntry>(
     `SELECT symbol, name, exchange, sector FROM datapai.stock_directory
-     WHERE symbol LIKE $1 OR UPPER(name) LIKE $2
+     WHERE lang=$3 AND (symbol LIKE $1 OR UPPER(name) LIKE $2)
      ORDER BY
        CASE WHEN symbol LIKE $1 THEN 0 ELSE 1 END,
        LENGTH(symbol), symbol
      LIMIT 20`,
-    [like, nameLike]
+    [like, nameLike, lang]
   );
 }
 
@@ -552,9 +558,9 @@ export async function upsertStockDirectory(entries: StockDirectoryEntry[]): Prom
     await client.query("BEGIN");
     for (const e of entries) {
       await client.query(
-        `INSERT INTO datapai.stock_directory (symbol, name, exchange, sector)
-         VALUES ($1,$2,$3,$4)
-         ON CONFLICT (symbol, exchange) DO UPDATE SET name=$2, sector=$4`,
+        `INSERT INTO datapai.stock_directory (symbol, name, exchange, sector, lang)
+         VALUES ($1,$2,$3,$4,'en')
+         ON CONFLICT (symbol, exchange, lang) DO UPDATE SET name=$2, sector=$4`,
         [e.symbol, e.name, e.exchange, e.sector]
       );
     }
@@ -569,9 +575,23 @@ export async function upsertStockDirectory(entries: StockDirectoryEntry[]): Prom
 
 export async function countStockDirectory(exchange?: string): Promise<number> {
   const rows = exchange
-    ? await q<{ cnt: string }>(`SELECT COUNT(*) as cnt FROM datapai.stock_directory WHERE exchange=$1`, [exchange])
-    : await q<{ cnt: string }>(`SELECT COUNT(*) as cnt FROM datapai.stock_directory`);
+    ? await q<{ cnt: string }>(`SELECT COUNT(*) as cnt FROM datapai.stock_directory WHERE exchange=$1 AND lang='en'`, [exchange])
+    : await q<{ cnt: string }>(`SELECT COUNT(*) as cnt FROM datapai.stock_directory WHERE lang='en'`);
   return parseInt(rows[0]?.cnt ?? "0");
+}
+
+/** Batch lookup localized stock names for a list of symbols. Returns {symbol: name} map. */
+export async function getLocalizedNames(symbols: string[], exchange: string, lang = "en"): Promise<Record<string, string>> {
+  if (symbols.length === 0) return {};
+  const placeholders = symbols.map((_, i) => `$${i + 3}`).join(",");
+  const rows = await q<{ symbol: string; name: string }>(
+    `SELECT symbol, name FROM datapai.stock_directory
+     WHERE exchange=$1 AND lang=$2 AND symbol IN (${placeholders})`,
+    [exchange, lang, ...symbols]
+  );
+  const map: Record<string, string> = {};
+  for (const r of rows) map[r.symbol] = r.name;
+  return map;
 }
 
 // ─── Users & Sessions ─────────────────────────────────────────────────────
