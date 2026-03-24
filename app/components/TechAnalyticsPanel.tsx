@@ -430,7 +430,7 @@ export default function TechAnalyticsPanel({
     setFaError("");
     try {
       const res = await fetch(
-        `/api/ticker/${symbol}/fa-signal?exchange=${encodeURIComponent(exchange)}`,
+        `/api/ticker/${symbol}/fa-signal?exchange=${encodeURIComponent(exchange)}&lang=${encodeURIComponent(lang)}`,
         { signal: AbortSignal.timeout(30_000) }
       );
       let json: { ok?: boolean; data?: FaResult; error?: string };

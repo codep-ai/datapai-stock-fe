@@ -1,18 +1,13 @@
 /**
- * GET /api/ticker/[symbol]/fa-signal?exchange=US
+ * GET /api/ticker/[symbol]/fa-signal?exchange=US&lang=vi
  *
  * Reads the pre-computed fundamental snapshot from the Python backend and
  * formats it into a rich investment-thesis narrative in Markdown.
- *
- * Covers BOTH micro (company cashflow, OPEX/CAPEX, management efficiency,
- * valuation) AND macro (rates, trade policy, geopolitics, sector trends)
- * dimensions — the full "should I buy / sell / hold?" picture.
- *
- * Returns the same { ok, data: { signal_markdown, ... } } shape as ta-signal
- * so TechAnalyticsPanel can render it identically.
+ * Supports all 8 languages via DB-driven labels.
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { loadTranslations } from "@/lib/i18n";
 
 const AGENT_BASE = (process.env.AGENT_BACKEND_BASE_URL ?? "").replace(/\/$/, "");
 
@@ -38,36 +33,39 @@ function fmtLarge(v: number | null | undefined, currency = ""): string {
   return `${sign}${currency}${abs.toLocaleString()}`;
 }
 
-function scoreBand(v: number | null, mode: "bi" | "uni" = "bi"): string {
-  if (v == null) return "insufficient data";
+type L = Record<string, string>;
+function t(labels: L, key: string): string { return labels[key] ?? key; }
+
+function scoreBand(v: number | null, labels: L, mode: "bi" | "uni" = "bi"): string {
+  if (v == null) return t(labels, "fa_insufficient_data");
   if (mode === "uni") {
-    if (v >= 0.75) return "excellent";
-    if (v >= 0.55) return "strong";
-    if (v >= 0.35) return "moderate";
-    return "weak";
+    if (v >= 0.75) return t(labels, "fa_excellent");
+    if (v >= 0.55) return t(labels, "fa_strong");
+    if (v >= 0.35) return t(labels, "fa_moderate");
+    return t(labels, "fa_weak");
   }
-  if (v >=  0.5)  return "very favourable ↑↑";
-  if (v >=  0.2)  return "favourable ↑";
-  if (v >= -0.2)  return "neutral →";
-  if (v >= -0.5)  return "unfavourable ↓";
-  return "very unfavourable ↓↓";
+  if (v >=  0.5)  return `${t(labels, "fa_very_favourable")} ↑↑`;
+  if (v >=  0.2)  return `${t(labels, "fa_favourable")} ↑`;
+  if (v >= -0.2)  return `${t(labels, "fa_neutral")} →`;
+  if (v >= -0.5)  return `${t(labels, "fa_unfavourable")} ↓`;
+  return `${t(labels, "fa_very_unfavourable")} ↓↓`;
 }
 
-function signalAction(signal: string | null): string {
+function signalAction(signal: string | null, labels: L): string {
   switch (signal) {
-    case "STRONG_BUY":  return "⬆⬆ Strong case to accumulate / buy";
-    case "BUY":         return "⬆ Lean toward buying or holding long";
-    case "NEUTRAL":     return "→ Hold — wait for clearer catalysts";
-    case "SELL":        return "⬇ Consider trimming or reducing exposure";
-    case "STRONG_SELL": return "⬇⬇ Strong case to exit the position";
-    default:            return "— Insufficient data to form a view";
+    case "STRONG_BUY":  return `⬆⬆ ${t(labels, "fa_action_strong_buy")}`;
+    case "BUY":         return `⬆ ${t(labels, "fa_action_buy")}`;
+    case "NEUTRAL":     return `→ ${t(labels, "fa_action_neutral")}`;
+    case "SELL":        return `⬇ ${t(labels, "fa_action_sell")}`;
+    case "STRONG_SELL": return `⬇⬇ ${t(labels, "fa_action_strong_sell")}`;
+    default:            return `— ${t(labels, "fa_action_insufficient")}`;
   }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildMarkdown(d: Record<string, any>, ticker: string): string {
+function buildMarkdown(d: Record<string, any>, ticker: string, labels: L): string {
   const cur    = (d.currency as string | null) ?? "";
-  const sector = (d.sector   as string | null) ?? "this sector";
+  const sector = (d.sector   as string | null) ?? t(labels, "fa_this_sector");
   const signal = (d.fundamental_signal as string | null) ?? "N/A";
   const score  = d.fundamental_score != null
     ? (d.fundamental_score as number).toFixed(3) : "N/A";
@@ -77,25 +75,25 @@ function buildMarkdown(d: Record<string, any>, ticker: string): string {
   const lines: string[] = [];
 
   // ── Investment thesis header ───────────────────────────────────────────────
-  lines.push(`**AI verdict**: \`${signal.replace(/_/g, " ")}\`  ·  Composite score: **${score}** *(−1.0 bearish → +1.0 bullish)*`);
-  lines.push(`**Recommended action**: ${signalAction(signal)}`);
+  lines.push(`**${t(labels, "fa_ai_verdict")}**: \`${signal.replace(/_/g, " ")}\`  ·  ${t(labels, "fa_composite_score")}: **${score}** *(−1.0 ${t(labels, "fa_bearish")} → +1.0 ${t(labels, "fa_bullish")})*`);
+  lines.push(`**${t(labels, "fa_recommended_action")}**: ${signalAction(signal, labels)}`);
   lines.push("");
   lines.push("---");
   lines.push("");
 
-  // ── Section 1 — Company Fundamentals (Micro) ──────────────────────────────
-  lines.push("### 🏢 Company Fundamentals");
+  // ── Section 1 — Company Fundamentals ──────────────────────────────────────
+  lines.push(`### 🏢 ${t(labels, "fa_company_fundamentals")}`);
   if (d.company_name) {
     lines.push(`**${d.company_name}** · ${d.sector ?? ""}${d.industry ? ` › ${d.industry}` : ""}  ·  ${d.exchange ?? ticker}`);
   }
   if (d.market_cap != null) {
-    lines.push(`Market cap: **${fmtLarge(d.market_cap, cur)}**${d.enterprise_value != null ? `  ·  Enterprise value: ${fmtLarge(d.enterprise_value, cur)}` : ""}`);
+    lines.push(`${t(labels, "fa_market_cap")}: **${fmtLarge(d.market_cap, cur)}**${d.enterprise_value != null ? `  ·  ${t(labels, "fa_enterprise_value")}: ${fmtLarge(d.enterprise_value, cur)}` : ""}`);
   }
   lines.push("");
 
   // Valuation
   const vScore = d.valuation_score as number | null;
-  lines.push(`**Valuation** *(score: ${fmt(vScore, 2)}, ${scoreBand(vScore)} vs ${sector} peers)*`);
+  lines.push(`**${t(labels, "fa_valuation")}** *(${t(labels, "fa_score")}: ${fmt(vScore, 2)}, ${scoreBand(vScore, labels)} vs ${sector})*`);
   const peItems = [
     d.pe_ratio    != null ? `P/E: **${fmt(d.pe_ratio, 1)}x** TTM` : null,
     d.forward_pe  != null ? `Fwd P/E: **${fmt(d.forward_pe, 1)}x**` : null,
@@ -107,20 +105,20 @@ function buildMarkdown(d: Record<string, any>, ticker: string): string {
   if (peItems.length) lines.push(`- ${peItems.join("  ·  ")}`);
   if (d.fcf_yield != null) {
     const fy = d.fcf_yield as number;
-    const fyLabel = fy * 100 >= 6 ? "strong shareholder yield"
-                  : fy * 100 >= 3 ? "decent cash return"
-                  : "low cash yield";
+    const fyLabel = fy * 100 >= 6 ? t(labels, "fa_strong_yield")
+                  : fy * 100 >= 3 ? t(labels, "fa_decent_yield")
+                  : t(labels, "fa_low_yield");
     lines.push(`- FCF Yield: **${fmtPct(fy)}** — ${fyLabel}`);
   }
   lines.push("");
 
-  // Profitability & management efficiency (OPEX/CAPEX effectiveness)
+  // Profitability & management efficiency
   const qScore = d.quality_score as number | null;
-  lines.push(`**Profitability & Management Efficiency** *(quality score: ${fmt(qScore, 2)}/1.0, ${scoreBand(qScore, "uni")})*`);
+  lines.push(`**${t(labels, "fa_profitability")}** *(${t(labels, "fa_quality_score")}: ${fmt(qScore, 2)}/1.0, ${scoreBand(qScore, labels, "uni")})*`);
   const marginItems = [
-    d.gross_margin     != null ? `Gross margin: **${fmtPct(d.gross_margin)}**` : null,
-    d.operating_margin != null ? `Operating margin: **${fmtPct(d.operating_margin)}**` : null,
-    d.net_margin       != null ? `Net margin: **${fmtPct(d.net_margin)}**` : null,
+    d.gross_margin     != null ? `${t(labels, "fa_gross_margin")}: **${fmtPct(d.gross_margin)}**` : null,
+    d.operating_margin != null ? `${t(labels, "fa_operating_margin")}: **${fmtPct(d.operating_margin)}**` : null,
+    d.net_margin       != null ? `${t(labels, "fa_net_margin")}: **${fmtPct(d.net_margin)}**` : null,
   ].filter(Boolean);
   if (marginItems.length) lines.push(`- ${marginItems.join("  ·  ")}`);
 
@@ -130,29 +128,29 @@ function buildMarkdown(d: Record<string, any>, ticker: string): string {
     d.roic != null ? `ROIC: **${fmtPct(d.roic)}**` : null,
   ].filter(Boolean);
   if (returnItems.length) {
-    lines.push(`- Capital returns — ${returnItems.join("  ·  ")}  *(high ROIC = management deploying capital effectively)*`);
+    lines.push(`- ${t(labels, "fa_capital_returns")} — ${returnItems.join("  ·  ")}`);
   }
 
   const debtItems = [
     d.debt_to_equity  != null ? `D/E: ${fmt(d.debt_to_equity, 2)}x` : null,
-    d.current_ratio   != null ? `Current ratio: ${fmt(d.current_ratio, 2)}` : null,
-    d.interest_coverage != null ? `Interest coverage: **${fmt(d.interest_coverage, 1)}x**` : null,
+    d.current_ratio   != null ? `${t(labels, "fa_current_ratio")}: ${fmt(d.current_ratio, 2)}` : null,
+    d.interest_coverage != null ? `${t(labels, "fa_interest_coverage")}: **${fmt(d.interest_coverage, 1)}x**` : null,
   ].filter(Boolean);
-  if (debtItems.length) lines.push(`- Leverage & liquidity — ${debtItems.join("  ·  ")}`);
+  if (debtItems.length) lines.push(`- ${t(labels, "fa_leverage")} — ${debtItems.join("  ·  ")}`);
 
   if (d.total_cash != null || d.net_cash != null) {
     const bsItems = [
-      d.total_cash != null ? `Cash: ${fmtLarge(d.total_cash, cur)}` : null,
-      d.total_debt != null ? `Debt: ${fmtLarge(d.total_debt, cur)}` : null,
-      d.net_cash   != null ? `Net cash position: **${fmtLarge(d.net_cash, cur)}**` : null,
+      d.total_cash != null ? `${t(labels, "fa_cash")}: ${fmtLarge(d.total_cash, cur)}` : null,
+      d.total_debt != null ? `${t(labels, "fa_debt")}: ${fmtLarge(d.total_debt, cur)}` : null,
+      d.net_cash   != null ? `${t(labels, "fa_net_cash")}: **${fmtLarge(d.net_cash, cur)}**` : null,
     ].filter(Boolean);
-    lines.push(`- Balance sheet — ${bsItems.join("  ·  ")}`);
+    lines.push(`- ${t(labels, "fa_balance_sheet")} — ${bsItems.join("  ·  ")}`);
   }
   lines.push("");
 
-  // ── Section 2 — Growth & Cash Flow (Business Momentum) ────────────────────
+  // ── Section 2 — Growth & Cash Flow ────────────────────────────────────────
   const gScore = d.growth_score as number | null;
-  lines.push(`### 📈 Growth & Cash Flow  *(score: ${fmt(gScore, 2)}/1.0, ${scoreBand(gScore, "uni")})*`);
+  lines.push(`### 📈 ${t(labels, "fa_growth_cashflow")}  *(${t(labels, "fa_score")}: ${fmt(gScore, 2)}/1.0, ${scoreBand(gScore, labels, "uni")})*`);
   lines.push("");
 
   if (d.revenue_yoy != null || d.revenue_growth_5yr != null) {
@@ -160,7 +158,7 @@ function buildMarkdown(d: Record<string, any>, ticker: string): string {
       d.revenue_yoy        != null ? `YoY: **${fmtPct(d.revenue_yoy)}**` : null,
       d.revenue_growth_5yr != null ? `5yr CAGR: **${fmtPct(d.revenue_growth_5yr)}**` : null,
     ].filter(Boolean);
-    lines.push(`- Revenue growth — ${revItems.join("  ·  ")}`);
+    lines.push(`- ${t(labels, "fa_revenue_growth")} — ${revItems.join("  ·  ")}`);
   }
 
   if (d.earnings_yoy != null || d.eps_growth_5yr != null) {
@@ -168,41 +166,39 @@ function buildMarkdown(d: Record<string, any>, ticker: string): string {
       d.earnings_yoy   != null ? `YoY: **${fmtPct(d.earnings_yoy)}**` : null,
       d.eps_growth_5yr != null ? `5yr CAGR: **${fmtPct(d.eps_growth_5yr)}**` : null,
     ].filter(Boolean);
-    lines.push(`- Earnings growth — ${epsItems.join("  ·  ")}`);
+    lines.push(`- ${t(labels, "fa_earnings_growth")} — ${epsItems.join("  ·  ")}`);
   }
 
   if (d.free_cash_flow != null) {
     const fcfItems = [
       `FCF: **${fmtLarge(d.free_cash_flow, cur)}**`,
-      d.fcf_per_share      != null ? `per share: ${fmt(d.fcf_per_share, 2)}` : null,
-      d.operating_cf_margin != null ? `op. CF margin: **${fmtPct(d.operating_cf_margin)}**` : null,
+      d.fcf_per_share      != null ? `${t(labels, "fa_per_share")}: ${fmt(d.fcf_per_share, 2)}` : null,
+      d.operating_cf_margin != null ? `${t(labels, "fa_op_cf_margin")}: **${fmtPct(d.operating_cf_margin)}**` : null,
     ].filter(Boolean);
-    lines.push(`- Free cash flow — ${fcfItems.join("  ·  ")}  *(FCF is the truest measure of business health)*`);
+    lines.push(`- ${t(labels, "fa_free_cash_flow")} — ${fcfItems.join("  ·  ")}`);
   }
 
   if (d.dividend_yield != null && (d.dividend_yield as number) > 0.001) {
-    lines.push(`- Dividend: **${fmtPct(d.dividend_yield)}** yield  ·  Payout ratio: ${fmtPct(d.payout_ratio)}`);
+    lines.push(`- ${t(labels, "fa_dividend")}: **${fmtPct(d.dividend_yield)}**  ·  ${t(labels, "fa_payout_ratio")}: ${fmtPct(d.payout_ratio)}`);
   }
 
   if (d.beta != null) {
     const betaVal = d.beta as number;
-    const betaComment = betaVal > 1.5 ? "high volatility vs market"
-                      : betaVal > 1.0 ? "moderately higher volatility"
-                      : betaVal < 0.5 ? "low-beta defensive"
-                      : "close to market volatility";
-    lines.push(`- Beta: **${fmt(betaVal, 2)}** (${betaComment})${d.short_ratio != null ? `  ·  Short ratio: ${fmt(d.short_ratio, 1)} days` : ""}`);
+    const betaComment = betaVal > 1.5 ? t(labels, "fa_high_volatility")
+                      : betaVal > 1.0 ? t(labels, "fa_moderate_volatility")
+                      : betaVal < 0.5 ? t(labels, "fa_low_beta")
+                      : t(labels, "fa_market_volatility");
+    lines.push(`- Beta: **${fmt(betaVal, 2)}** (${betaComment})${d.short_ratio != null ? `  ·  Short ratio: ${fmt(d.short_ratio, 1)}` : ""}`);
   }
 
   if (d.next_earnings_date) {
-    lines.push(`- **Next earnings date**: ${(d.next_earnings_date as string).slice(0, 10)}`);
+    lines.push(`- **${t(labels, "fa_next_earnings")}**: ${(d.next_earnings_date as string).slice(0, 10)}`);
   }
   lines.push("");
 
-  // ── Section 3 — Macro & Geopolitical (Big Picture) ────────────────────────
+  // ── Section 3 — Macro & Geopolitical ──────────────────────────────────────
   const mScore = d.macro_score as number | null;
-  lines.push(`### 🌍 Macro & Geopolitical Environment  *(macro score: ${fmt(mScore, 2)}, ${scoreBand(mScore)})*`);
-  lines.push("");
-  lines.push(`*Sector-level analysis for **${sector}** via Gemini real-time grounding — covers interest rates, trade policy, geopolitical risks, sector regulation, and AI disruption.*`);
+  lines.push(`### 🌍 ${t(labels, "fa_macro_geo")}  *(${t(labels, "fa_macro_score")}: ${fmt(mScore, 2)}, ${scoreBand(mScore, labels)})*`);
   lines.push("");
 
   if (d.macro_summary) {
@@ -212,45 +208,43 @@ function buildMarkdown(d: Record<string, any>, ticker: string): string {
 
   const macroFactors = d.macro_factors as string[] | null;
   if (macroFactors && macroFactors.length > 0) {
-    lines.push("**Key macro factors for this sector:**");
+    lines.push(`**${t(labels, "fa_key_macro")}:**`);
     for (const f of macroFactors) lines.push(`- ${f}`);
     lines.push("");
   }
 
   const geoFlags = d.geopolitical_flags as string[] | null;
   if (geoFlags && geoFlags.length > 0) {
-    lines.push("**Geopolitical flags to monitor:**");
+    lines.push(`**${t(labels, "fa_geo_flags")}:**`);
     for (const g of geoFlags) lines.push(`- ⚑ ${g}`);
     lines.push("");
   }
 
   const techRisk = d.tech_disruption_risk as string | null;
   if (techRisk && techRisk !== "UNKNOWN") {
-    const riskNote = techRisk === "HIGH"   ? "sector faces material disruption from AI/automation"
-                   : techRisk === "MEDIUM" ? "some disruption risk; companies adapting to AI are better positioned"
-                   : "sector is relatively insulated from near-term AI disruption";
-    lines.push(`**AI & tech disruption risk**: **${techRisk}** — ${riskNote}`);
+    const riskNote = techRisk === "HIGH"   ? t(labels, "fa_disruption_high")
+                   : techRisk === "MEDIUM" ? t(labels, "fa_disruption_medium")
+                   : t(labels, "fa_disruption_low");
+    lines.push(`**${t(labels, "fa_ai_disruption")}**: **${techRisk}** — ${riskNote}`);
     lines.push("");
   }
 
   // ── Section 4 — Market & Analyst Sentiment ────────────────────────────────
   if (d.analyst_consensus) {
-    lines.push("### 👥 Market & Analyst Sentiment");
+    lines.push(`### 👥 ${t(labels, "fa_analyst_sentiment")}`);
     const upside = d.analyst_upside_pct as number | null;
     const target = d.analyst_target_price as number | null;
     lines.push(
-      `Wall St. consensus: **${d.analyst_consensus}**` +
-      (target != null ? `  ·  Price target: ${cur}${target.toFixed(2)}` : "") +
-      (upside != null ? `  ·  Implied upside: **${upside >= 0 ? "+" : ""}${upside.toFixed(1)}%**` : "")
+      `${t(labels, "fa_consensus")}: **${d.analyst_consensus}**` +
+      (target != null ? `  ·  ${t(labels, "fa_price_target")}: ${cur}${target.toFixed(2)}` : "") +
+      (upside != null ? `  ·  ${t(labels, "fa_implied_upside")}: **${upside >= 0 ? "+" : ""}${upside.toFixed(1)}%**` : "")
     );
-    lines.push("");
-    lines.push("*Note: IR page changes, management announcements and insider activity are tracked by the **Technical Signal** (TinyFish IR scan) above — check that section for the latest company-specific news impact.*");
     lines.push("");
   }
 
   // ── Section 5 — AI Investment Summary ─────────────────────────────────────
   if (d.fundamental_summary) {
-    lines.push("### 📝 AI Investment Summary");
+    lines.push(`### 📝 ${t(labels, "fa_ai_summary")}`);
     lines.push(d.fundamental_summary as string);
     lines.push("");
   }
@@ -260,12 +254,12 @@ function buildMarkdown(d: Record<string, any>, ticker: string): string {
   const risks     = d.key_risks     as string[] | null;
   if ((strengths?.length ?? 0) > 0 || (risks?.length ?? 0) > 0) {
     if (strengths && strengths.length > 0) {
-      lines.push("**Why BUY / What's working:**");
+      lines.push(`**${t(labels, "fa_why_buy")}:**`);
       for (const s of strengths) lines.push(`✅ ${s}`);
       lines.push("");
     }
     if (risks && risks.length > 0) {
-      lines.push("**Key risks / What could go wrong:**");
+      lines.push(`**${t(labels, "fa_key_risks")}:**`);
       for (const r of risks) lines.push(`⚠️ ${r}`);
       lines.push("");
     }
@@ -274,10 +268,10 @@ function buildMarkdown(d: Record<string, any>, ticker: string): string {
   // ── Footer ────────────────────────────────────────────────────────────────
   lines.push("---");
   lines.push(
-    `*Fundamental data: yfinance + Gemini grounding · Computed ${computedAt}` +
+    `*${t(labels, "fa_data_source")} · ${t(labels, "fa_computed")} ${computedAt}` +
     (d.sector   ? ` · ${d.sector}` : "") +
     (d.industry ? ` › ${d.industry}` : "") +
-    ` · **Not financial advice** — combine with TA signal and your own research*`
+    ` · **${t(labels, "fa_not_advice")}***`
   );
 
   return lines.join("\n");
@@ -289,6 +283,9 @@ export async function GET(
 ) {
   const { symbol } = await params;
   const exchange = (req.nextUrl.searchParams.get("exchange") ?? "US").toUpperCase();
+  const SUPPORTED_LANGS = ["en", "zh", "zh-TW", "ja", "ko", "vi", "th", "ms"];
+  const langParam = req.nextUrl.searchParams.get("lang") ?? "en";
+  const lang = SUPPORTED_LANGS.includes(langParam) ? langParam : "en";
   const sym = symbol.toUpperCase();
 
   if (!AGENT_BASE) {
@@ -299,14 +296,16 @@ export async function GET(
   }
 
   try {
-    const res = await fetch(
-      `${AGENT_BASE}/agent/fundamental-snapshot?ticker=${encodeURIComponent(sym)}&exchange=${encodeURIComponent(exchange)}`,
-      { cache: "no-store" }
-    );
+    const [labels, res] = await Promise.all([
+      loadTranslations(lang),
+      fetch(
+        `${AGENT_BASE}/agent/fundamental-snapshot?ticker=${encodeURIComponent(sym)}&exchange=${encodeURIComponent(exchange)}`,
+        { cache: "no-store" }
+      ),
+    ]);
     const json = await res.json();
 
     if (!json.ok || !json.data) {
-      // Extract plain-text error message from Python backend (may be object or string)
       const errMsg = typeof json.error === "object" && json.error !== null
         ? (json.error as Record<string, string>).message ?? JSON.stringify(json.error)
         : (json.error as string | undefined)
@@ -315,7 +314,7 @@ export async function GET(
     }
 
     const d = json.data as Record<string, unknown>;
-    const signal_markdown = buildMarkdown(d, sym);
+    const signal_markdown = buildMarkdown(d, sym, labels);
 
     return NextResponse.json({
       ok: true,
