@@ -282,7 +282,7 @@ export default async function WatchlistPage() {
                 })()}
               </span>
               <Link href="/alerts?watchlist=true" className="text-sm hover:underline font-medium" style={{ color: "#2e8b57" }}>
-                View my alerts →
+                {t(labels, "watchlist_view_alerts")} →
               </Link>
             </div>
 
@@ -344,7 +344,7 @@ export default async function WatchlistPage() {
                               <div className="text-[10px] text-gray-300">{price.trade_date}</div>
                             </>
                           ) : (
-                            <div className="text-xs text-gray-300">No price data</div>
+                            <div className="text-xs text-gray-300">{t(labels, "no_price_data")}</div>
                           )}
                         </div>
                         {synth && (
@@ -366,7 +366,7 @@ export default async function WatchlistPage() {
                         {hasAlert && (
                           <div className="mt-1.5 pt-1.5 border-t border-gray-100">
                             <div className="text-xs font-medium" style={{ color: "#b45309" }}>
-                              {analysis.changed_pct != null && analysis.changed_pct > 90 ? "Significant change" : analysis.changed_pct != null ? `${analysis.changed_pct.toFixed(1)}% changed` : "—"}
+                              {analysis.changed_pct != null && analysis.changed_pct > 90 ? t(labels, "significant_change") : analysis.changed_pct != null ? `${analysis.changed_pct.toFixed(1)}% ${t(labels, "changed")}` : "—"}
                             </div>
                             <div className="text-[10px] text-gray-300">{new Date(analysis.fetched_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</div>
                           </div>
@@ -383,14 +383,14 @@ export default async function WatchlistPage() {
                     <thead>
                       <tr className="border-b border-gray-100 bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wider">
                         <th className="px-4 py-3 font-semibold">#</th>
-                        <th className="px-4 py-3 font-semibold">Ticker</th>
-                        <th className="px-4 py-3 font-semibold">Name</th>
+                        <th className="px-4 py-3 font-semibold">{t(labels, "ticker_label")}</th>
+                        <th className="px-4 py-3 font-semibold">{t(labels, "name_label")}</th>
                         <th className="px-4 py-3 font-semibold text-center">Mkt</th>
-                        <th className="px-4 py-3 font-semibold text-right">Price</th>
-                        <th className="px-4 py-3 font-semibold text-right">Change %</th>
-                        <th className="px-4 py-3 font-semibold text-right">Date</th>
-                        <th className="px-4 py-3 font-semibold text-center">AI Signal</th>
-                        <th className="px-4 py-3 font-semibold text-center">Scan</th>
+                        <th className="px-4 py-3 font-semibold text-right">{t(labels, "price")}</th>
+                        <th className="px-4 py-3 font-semibold text-right">{t(labels, "change_pct_label")}</th>
+                        <th className="px-4 py-3 font-semibold text-right">{t(labels, "date_label")}</th>
+                        <th className="px-4 py-3 font-semibold text-center">AI</th>
+                        <th className="px-4 py-3 font-semibold text-center">{t(labels, "scan_label")}</th>
                         <th className="px-4 py-3 font-semibold text-center"></th>
                       </tr>
                     </thead>
@@ -458,7 +458,7 @@ export default async function WatchlistPage() {
                 </div>
               );
 
-              return <StockViewToggle gridView={gridView} listView={listView} />;
+              return <StockViewToggle gridView={gridView} listView={listView} gridLabel={t(labels, "view_grid")} listLabel={t(labels, "view_list")} />;
             })()}
           </div>
         )}
