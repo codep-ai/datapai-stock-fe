@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { loadTranslations } from "@/lib/i18n";
+import { translateContent } from "@/lib/translate";
 
 const AGENT_BASE = (process.env.AGENT_BACKEND_BASE_URL ?? "").replace(/\/$/, "");
 
@@ -314,6 +315,28 @@ export async function GET(
     }
 
     const d = json.data as Record<string, unknown>;
+
+    // Translate text fields from Python backend if non-English
+    if (lang !== "en") {
+      const textFields = ["macro_summary", "fundamental_summary"];
+      const arrayFields = ["key_strengths", "key_risks", "macro_factors", "geopolitical_flags"];
+      // Translate single text fields
+      for (const f of textFields) {
+        if (d[f] && typeof d[f] === "string") {
+          d[f] = await translateContent(d[f] as string, lang, "fa_snapshot", `${sym}:${exchange}`, f);
+        }
+      }
+      // Translate array fields (each item)
+      for (const f of arrayFields) {
+        const arr = d[f] as string[] | null;
+        if (arr && arr.length > 0) {
+          d[f] = await Promise.all(
+            arr.map((item, i) => translateContent(item, lang, "fa_snapshot", `${sym}:${exchange}`, `${f}_${i}`))
+          );
+        }
+      }
+    }
+
     const signal_markdown = buildMarkdown(d, sym, labels);
 
     return NextResponse.json({

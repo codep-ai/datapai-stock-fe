@@ -4,6 +4,7 @@ import { getTickerSnapshots, getTickerAnalyses, getTickerDiffs, getLatestAnalysi
 import { getLang } from "@/lib/getLang";
 import { loadTranslations } from "@/lib/i18n";
 import { t } from "@/lib/translations";
+import { translateFields } from "@/lib/translate";
 import { BreakingNewsPanel } from "../../components/BreakingNewsAlert";
 import { fetchPrices } from "@/lib/price";
 import PriceChart from "./PriceChart";
@@ -279,6 +280,19 @@ export default async function TickerPage({
   const signalIsFromLatest = latestSignal?.snapshot_new_id === latest?.snapshot_new_id;
   const signalSource = latestSignal ?? latest; // what we'll show for AI signal sections
   const latestIsNoSignal = latest?.agent_signal_type === "NO_SIGNAL";
+
+  // Translate AI-generated content on display (Option A: translate + cache)
+  const signalId = String(signalSource?.id ?? "0");
+  const translated = lang !== "en" && signalSource
+    ? await translateFields({
+        agent_what_changed: signalSource.agent_what_changed,
+        agent_financial_relevance: signalSource.agent_financial_relevance,
+        validation_summary: signalSource.validation_summary,
+        investigation_summary: signalSource.investigation_summary,
+      }, lang, "analyses", signalId)
+    : null;
+  // Helper: get translated or original field
+  const tx = (field: string) => translated?.[field] ?? (signalSource as Record<string, string | null>)?.[field] ?? "";
 
   const cats: string[] = latest?.categories_json ? JSON.parse(latest.categories_json) : [];
   const qualityFlags = latestSnap?.quality_flags_json
@@ -571,7 +585,7 @@ export default async function TickerPage({
           {(signalSource ?? latest).agent_financial_relevance && (
             <div className="px-8 pb-8">
               <div className="text-gray-400 text-sm mb-2 uppercase tracking-wider font-medium">{t(labels, "ticker_financial_relevance")}</div>
-              <p className="text-base text-gray-700 leading-relaxed">{(signalSource ?? latest).agent_financial_relevance}</p>
+              <p className="text-base text-gray-700 leading-relaxed">{tx("agent_financial_relevance")}</p>
             </div>
           )}
         </div>
@@ -660,7 +674,7 @@ export default async function TickerPage({
               </div>
               {signalSource?.validation_summary && (
                 <p className="text-base text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-6 border border-gray-100">
-                  {signalSource.validation_summary}
+                  {tx("validation_summary")}
                 </p>
               )}
             </>
@@ -702,7 +716,7 @@ export default async function TickerPage({
                 </p>
               )}
               <p className="text-base text-gray-700 leading-relaxed bg-purple-50 rounded-xl p-6 border border-purple-100">
-                {signalSource!.investigation_summary}
+                {tx("investigation_summary")}
               </p>
               {investigationSources.length > 0 && (
                 <div>
@@ -736,8 +750,8 @@ export default async function TickerPage({
         exchange={exchangeLabel}
         snapshotText={(latestSnap?.cleaned_text ?? latestSnap?.text ?? "").slice(0, 4000)}
         latestHeadline={
-          signalSource?.agent_what_changed
-            ? signalSource.agent_what_changed.slice(0, 200)
+          tx("agent_what_changed")
+            ? tx("agent_what_changed").slice(0, 200)
             : `${ticker.name} — recent IR page update`
         }
       />
