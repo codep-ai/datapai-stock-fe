@@ -11,7 +11,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import SimpleMarkdown from "./SimpleMarkdown";
-import { t as tFn, type Lang } from "@/lib/translations";
+import { type Lang } from "@/lib/translations";
 
 interface Message {
   role:      "user" | "assistant" | "system";
@@ -30,19 +30,29 @@ interface Props {
   snapshotText?: string;
 }
 
-const SUGGESTED: Record<Lang, string[]> = {
-  en: [
-    "What does the latest Investor Relations (IR) language change mean for the stock price?",
-    "Summarise the key risks mentioned in recent scans",
-    "Is this a good entry point based on current technicals?",
-    "How does this compare to sector peers?",
-  ],
-  zh: [
-    "最新IR（投资者关系）语言变化对股价意味着什么？",
-    "总结近期扫描中提到的主要风险",
-    "根据当前技术面，现在是好的入场点吗？",
-    "与同行业同类股票相比如何？",
-  ],
+const SUGGESTED_EN = [
+  "What does the latest Investor Relations (IR) language change mean for the stock price?",
+  "Summarise the key risks mentioned in recent scans",
+  "Is this a good entry point based on current technicals?",
+  "How does this compare to sector peers?",
+];
+
+const SUGGESTED_ZH = [
+  "最新IR（投资者关系）语言变化对股价意味着什么？",
+  "总结近期扫描中提到的主要风险",
+  "根据当前技术面，现在是好的入场点吗？",
+  "与同行业同类股票相比如何？",
+];
+
+const SUGGESTED: Record<string, string[]> = {
+  en: SUGGESTED_EN,
+  zh: SUGGESTED_ZH,
+  "zh-TW": SUGGESTED_ZH,
+  ja: SUGGESTED_EN,
+  ko: SUGGESTED_EN,
+  vi: SUGGESTED_EN,
+  th: SUGGESTED_EN,
+  ms: SUGGESTED_EN,
 };
 
 export default function StockChatPanel({
@@ -52,8 +62,6 @@ export default function StockChatPanel({
   taSignalMd,
   snapshotText,
 }: Props) {
-  const T = (key: Parameters<typeof tFn>[1]) => tFn(lang, key);
-
   const [messages, setMessages] = useState<Message[]>([]);
   const [input,    setInput]    = useState("");
   const [loading,  setLoading]  = useState(false);

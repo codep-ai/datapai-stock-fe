@@ -8,6 +8,7 @@ import Link from "next/link";
 import { UNIVERSE_ALL } from "@/lib/universe";
 import { getCachedTaSignal } from "@/lib/db";
 import { getLang } from "@/lib/getLang";
+import { loadTranslations } from "@/lib/i18n";
 import { t } from "@/lib/translations";
 import TickerSearch from "../components/TickerSearch";
 
@@ -30,6 +31,7 @@ function signalColor(md: string): { bg: string; text: string; label: string } {
 
 export default async function IntelLandingPage() {
   const lang = await getLang();
+  const labels = await loadTranslations(lang);
 
   // Pre-load any cached TA signals for the monitored universe
   const signals = await Promise.all(
@@ -55,7 +57,7 @@ export default async function IntelLandingPage() {
               className="text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest"
               style={{ background: "rgba(255,255,255,0.2)", color: "#fff" }}
             >
-              {t(lang, "intel_badge")}
+              {t(labels,"intel_badge")}
             </span>
             <span className="text-white/70 text-xs">
               🌊 TinyFish IR scan · Yahoo Finance · Gemini · GPT‑5.1
@@ -63,14 +65,14 @@ export default async function IntelLandingPage() {
           </div>
 
           <h1 className="text-3xl md:text-4xl font-bold text-white">
-            {t(lang, "intel_hero_title")}
+            {t(labels,"intel_hero_title")}
           </h1>
 
           <p className="text-white/80 text-sm max-w-xl">
-            {t(lang, "intel_hero_desc")}
+            {t(labels,"intel_hero_desc")}
           </p>
 
-          <TickerSearch placeholder={t(lang, "intel_search")} intelMode />
+          <TickerSearch placeholder={t(labels,"intel_search")} intelMode />
         </div>
       </div>
 
@@ -81,9 +83,9 @@ export default async function IntelLandingPage() {
         {withSignal.length > 0 && (
           <div>
             <h2 className="text-2xl font-bold text-[#252525] mb-5">
-              {t(lang, "intel_withSignal")}
+              {t(labels,"intel_withSignal")}
               <span className="text-base font-normal text-gray-400 ml-2">
-                {t(lang, "intel_period")}
+                {t(labels,"intel_period")}
               </span>
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
@@ -132,7 +134,7 @@ export default async function IntelLandingPage() {
         {/* All monitored stocks — click to generate */}
         <div>
           <h2 className="text-2xl font-bold text-[#252525] mb-5">
-            {withSignal.length > 0 ? t(lang, "intel_allStocks") : t(lang, "intel_clickGenerate")}
+            {withSignal.length > 0 ? t(labels,"intel_allStocks") : t(labels,"intel_clickGenerate")}
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
             {withoutSignal.map(({ ticker }) => (
@@ -145,7 +147,7 @@ export default async function IntelLandingPage() {
                   {ticker.symbol}
                 </div>
                 <div className="text-gray-400 text-xs mt-0.5 truncate">{ticker.name}</div>
-                <div className="text-gray-300 text-xs mt-1.5">{ticker.exchange} · {t(lang, "intel_noSignal")}</div>
+                <div className="text-gray-300 text-xs mt-1.5">{ticker.exchange} · {t(labels,"intel_noSignal")}</div>
               </Link>
             ))}
           </div>
@@ -154,20 +156,20 @@ export default async function IntelLandingPage() {
         {/* What is this */}
         <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
           <h3 className="font-bold text-xl text-[#252525] mb-4">
-            {t(lang, "intel_whatIs")}
+            {t(labels,"intel_whatIs")}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm text-gray-500">
             <div>
-              <div className="font-bold text-[#2e8b57] mb-2">{t(lang, "intel_ta_heading")}</div>
-              {t(lang, "intel_ta_desc")}
+              <div className="font-bold text-[#2e8b57] mb-2">{t(labels,"intel_ta_heading")}</div>
+              {t(labels,"intel_ta_desc")}
             </div>
             <div>
-              <div className="font-bold text-[#6366f1] mb-2">{t(lang, "intel_chart_heading")}</div>
-              {t(lang, "intel_chart_desc")}
+              <div className="font-bold text-[#6366f1] mb-2">{t(labels,"intel_chart_heading")}</div>
+              {t(labels,"intel_chart_desc")}
             </div>
             <div>
-              <div className="font-bold text-[#fd8412] mb-2">{t(lang, "intel_asx_heading")}</div>
-              {t(lang, "intel_asx_desc")}
+              <div className="font-bold text-[#fd8412] mb-2">{t(labels,"intel_asx_heading")}</div>
+              {t(labels,"intel_asx_desc")}
             </div>
           </div>
         </div>

@@ -7,8 +7,7 @@
 import { useState, useMemo } from "react";
 import type { Broker } from "@/lib/brokers";
 import type { TrustpilotRating } from "@/lib/trustpilot-scanner";
-import type { Lang } from "@/lib/translations";
-import { t } from "@/lib/translations";
+import { t, type Labels } from "@/lib/translations";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -81,12 +80,12 @@ export function BrokerTable({
   brokers,
   ratings,
   isAU,
-  lang,
+  labels = {},
 }: {
   brokers: Broker[];
   ratings: Record<string, TrustpilotRating>;
   isAU: boolean;
-  lang: Lang;
+  labels?: Labels;
 }) {
   const [sortKey, setSortKey] = useState<SortKey>("rating");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -161,25 +160,25 @@ export function BrokerTable({
       <table className="w-full min-w-[1200px] border-collapse bg-white">
         <thead>
           <tr style={{ background: "linear-gradient(90deg, seagreen, darkseagreen)" }}>
-            <SortTh col="name" className="rounded-tl-xl">{t(lang, "broker_th_broker")}</SortTh>
-            <SortTh col="rating">{t(lang, "broker_th_rating")}</SortTh>
-            <SortTh col="reviews">{t(lang, "broker_th_reviews")}</SortTh>
-            <SortTh col="fee10k">{t(lang, "broker_th_fee10k")}</SortTh>
-            <Th>{t(lang, "broker_th_stock_comm")}</Th>
-            <SortTh col="acctMin">{t(lang, "broker_th_acct_min")}</SortTh>
-            <Th>{t(lang, "broker_th_au_stocks")}</Th>
-            <Th>{t(lang, "broker_th_us_stocks")}</Th>
-            <Th>{t(lang, "broker_th_intl")}</Th>
-            <SortTh col="crypto">{t(lang, "broker_th_crypto")}</SortTh>
-            {isAU && <SortTh col="chess">{t(lang, "broker_th_chess")}</SortTh>}
-            {isAU && <SortTh col="smsf">{t(lang, "broker_th_smsf")}</SortTh>}
-            {!isAU && <SortTh col="ira">{t(lang, "broker_th_ira")}</SortTh>}
-            {!isAU && <Th>{t(lang, "broker_th_solo401k")}</Th>}
-            <SortTh col="fractional">{t(lang, "broker_th_fractional")}</SortTh>
-            <Th>{t(lang, "broker_th_mobile")}</Th>
+            <SortTh col="name" className="rounded-tl-xl">{t(labels,"broker_th_broker")}</SortTh>
+            <SortTh col="rating">{t(labels,"broker_th_rating")}</SortTh>
+            <SortTh col="reviews">{t(labels,"broker_th_reviews")}</SortTh>
+            <SortTh col="fee10k">{t(labels,"broker_th_fee10k")}</SortTh>
+            <Th>{t(labels,"broker_th_stock_comm")}</Th>
+            <SortTh col="acctMin">{t(labels,"broker_th_acct_min")}</SortTh>
+            <Th>{t(labels,"broker_th_au_stocks")}</Th>
+            <Th>{t(labels,"broker_th_us_stocks")}</Th>
+            <Th>{t(labels,"broker_th_intl")}</Th>
+            <SortTh col="crypto">{t(labels,"broker_th_crypto")}</SortTh>
+            {isAU && <SortTh col="chess">{t(labels,"broker_th_chess")}</SortTh>}
+            {isAU && <SortTh col="smsf">{t(labels,"broker_th_smsf")}</SortTh>}
+            {!isAU && <SortTh col="ira">{t(labels,"broker_th_ira")}</SortTh>}
+            {!isAU && <Th>{t(labels,"broker_th_solo401k")}</Th>}
+            <SortTh col="fractional">{t(labels,"broker_th_fractional")}</SortTh>
+            <Th>{t(labels,"broker_th_mobile")}</Th>
             {/* ETF & Options moved to end as requested */}
-            <Th>{t(lang, "broker_th_etf_comm")}</Th>
-            <Th className="rounded-tr-xl">{t(lang, "broker_th_options")}</Th>
+            <Th>{t(labels,"broker_th_etf_comm")}</Th>
+            <Th className="rounded-tr-xl">{t(labels,"broker_th_options")}</Th>
           </tr>
         </thead>
         <tbody>
@@ -211,12 +210,12 @@ export function BrokerTable({
                     </span>
                     <a href={b.url} target="_blank" rel="noopener noreferrer nofollow"
                       className="text-[10px] text-emerald-600 hover:underline">
-                      {t(lang, "broker_visit_site")}
+                      {t(labels,"broker_visit_site")}
                     </a>
                     <a href={b.signupUrl} target="_blank" rel="noopener noreferrer nofollow"
                       className="text-[10px] font-semibold px-2 py-0.5 rounded transition-opacity hover:opacity-80"
                       style={{ background: "#fd8412", color: "white" }}>
-                      {t(lang, "broker_open_account")}
+                      {t(labels,"broker_open_account")}
                     </a>
                   </div>
                   {b.note && (

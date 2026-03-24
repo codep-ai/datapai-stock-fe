@@ -4,7 +4,8 @@ import Image from "next/image";
 import "./globals.css";
 import { getAuthUser } from "@/lib/auth";
 import { getLang } from "@/lib/getLang";
-import { t } from "@/lib/translations";
+import { loadTranslations, loadLanguages } from "@/lib/i18n";
+import { t, HTML_LANG } from "@/lib/translations";
 import { getInvestorProfile } from "@/lib/investorProfile";
 import LogoutButton from "./components/LogoutButton";
 import LangToggle from "./components/LangToggle";
@@ -35,10 +36,14 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const [user, lang] = await Promise.all([getAuthUser(), getLang()]);
-  const investorProfile = user ? await getInvestorProfile(user.userId).catch(() => null) : null;
+  const [labels, languages, investorProfile] = await Promise.all([
+    loadTranslations(lang),
+    loadLanguages(),
+    user ? getInvestorProfile(user.userId).catch(() => null) : Promise.resolve(null),
+  ]);
 
   return (
-    <html lang={lang === "zh" ? "zh-CN" : "en"} className={`${poppins.variable} ${rajdhani.variable}`}>
+    <html lang={HTML_LANG[lang] ?? "en"} className={`${poppins.variable} ${rajdhani.variable}`}>
       <body className="min-h-screen bg-[#fcfcfd] text-[#252525] antialiased">
 
         {/* Navbar — clean white, datap.ai style */}
@@ -60,21 +65,21 @@ export default async function RootLayout({
             {/* Centre: page nav */}
             <nav className="flex items-center gap-0.5 flex-1 justify-center">
               <a href="/" className="text-gray-500 hover:text-[#2e8b57] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
-                style={{ fontSize: "0.92rem" }}>{t(lang, "nav_usStocks")}</a>
+                style={{ fontSize: "0.92rem" }}>{t(labels, "nav_usStocks")}</a>
               <a href="/asx" className="text-gray-500 hover:text-[#2e8b57] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
-                style={{ fontSize: "0.92rem" }}>{t(lang, "nav_asx")}</a>
+                style={{ fontSize: "0.92rem" }}>{t(labels, "nav_asx")}</a>
               <a href="/alerts" className="text-gray-500 hover:text-[#2e8b57] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
-                style={{ fontSize: "0.92rem" }}>{t(lang, "nav_alerts")}</a>
+                style={{ fontSize: "0.92rem" }}>{t(labels, "nav_alerts")}</a>
               <a href="/watchlist" className="text-gray-500 hover:text-[#2e8b57] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
-                style={{ fontSize: "0.92rem" }}>{t(lang, "nav_watchlist")}</a>
+                style={{ fontSize: "0.92rem" }}>{t(labels, "nav_watchlist")}</a>
               <a href="/intel" className="text-gray-500 hover:text-[#6366f1] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
-                style={{ fontSize: "0.92rem" }}>{t(lang, "nav_aiAnalysis")}</a>
+                style={{ fontSize: "0.92rem" }}>{t(labels, "nav_aiAnalysis")}</a>
               <a href="/screener" className="text-gray-500 hover:text-[#2e8b57] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
-                style={{ fontSize: "0.92rem" }}>Screener</a>
+                style={{ fontSize: "0.92rem" }}>{t(labels, "nav_screener")}</a>
               <a href="/indexes" className="text-gray-500 hover:text-[#2e8b57] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
-                style={{ fontSize: "0.92rem" }}>Indexes</a>
+                style={{ fontSize: "0.92rem" }}>{t(labels, "nav_indexes")}</a>
               <a href="/pricing" className="text-gray-500 hover:text-[#2e8b57] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
-                style={{ fontSize: "0.92rem" }}>{t(lang, "nav_pricing")}</a>
+                style={{ fontSize: "0.92rem" }}>{t(labels, "nav_pricing")}</a>
             </nav>
 
             {/* Right: sponsor logos + lang toggle + auth */}
@@ -82,7 +87,7 @@ export default async function RootLayout({
 
               {/* Powered-by sponsor logos */}
               <div className="hidden md:flex items-center gap-2 border-r border-gray-100 pr-4 mr-1">
-                <span className="text-gray-400 text-xs font-medium">{t(lang, "nav_poweredBy")}</span>
+                <span className="text-gray-400 text-xs font-medium">{t(labels, "nav_poweredBy")}</span>
                 <a href="https://tinyfish.ai" target="_blank" rel="noopener noreferrer" title="TinyFish"
                   className="flex items-center transition-opacity hover:opacity-70">
                   <Image src="/logos/tinyfish.svg" width={60} height={14} alt="TinyFish" style={{ height: "14px", width: "auto" }} />
@@ -95,7 +100,7 @@ export default async function RootLayout({
               </div>
 
               {/* Language toggle */}
-              <LangToggle current={lang} />
+              <LangToggle current={lang} languages={languages} />
 
               {user ? (
                 <>
@@ -115,7 +120,7 @@ export default async function RootLayout({
                   className="inline-flex items-center font-semibold rounded-lg px-5 py-2 transition-all hover:bg-[#2e8b57] hover:text-white"
                   style={{ fontSize: "0.9rem", color: "#2e8b57", border: "1.5px solid #2e8b57" }}
                 >
-                  {t(lang, "nav_login")}
+                  {t(labels, "nav_login")}
                 </a>
               )}
             </div>
@@ -171,16 +176,16 @@ export default async function RootLayout({
               </span>
             </div>
             <p className="text-gray-500 text-xs text-center">
-              {t(lang, "footer_project")} ·{" "}
-              {t(lang, "footer_poweredBy")}{" "}
+              {t(labels, "footer_project")} ·{" "}
+              {t(labels, "footer_poweredBy")}{" "}
               <a href="https://tinyfish.ai" target="_blank" rel="noopener noreferrer" className="text-[#8fbc8f] hover:text-[#a8d5a8] transition-colors">TinyFish</a>
-              {" "}{t(lang, "footer_realBrowser")} &amp;{" "}
+              {" "}{t(labels, "footer_realBrowser")} &amp;{" "}
               <a href="https://www.ag2.ai" target="_blank" rel="noopener noreferrer" className="text-[#8fbc8f] hover:text-[#a8d5a8] transition-colors">ag2</a>
-              {" "}{t(lang, "footer_aiFramework")}
+              {" "}{t(labels, "footer_aiFramework")}
             </p>
             <div className="flex items-center gap-4 text-xs text-gray-600">
-              <span>{t(lang, "footer_websiteIntel")}</span>
-              <a href="/pricing" className="text-[#8fbc8f] hover:text-[#a8d5a8] transition-colors">{t(lang, "nav_pricing")}</a>
+              <span>{t(labels, "footer_websiteIntel")}</span>
+              <a href="/pricing" className="text-[#8fbc8f] hover:text-[#a8d5a8] transition-colors">{t(labels, "nav_pricing")}</a>
               <a href="https://platform.datap.ai/bi" target="_blank" rel="noopener noreferrer" className="text-[#8fbc8f] hover:text-[#a8d5a8] transition-colors">platform.datap.ai</a>
             </div>
           </div>

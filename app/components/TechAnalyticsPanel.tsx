@@ -21,7 +21,7 @@
 
 import { useState, useEffect } from "react";
 import SimpleMarkdown from "./SimpleMarkdown";
-import { t as tFn, type Lang } from "@/lib/translations";
+import { t as tFn, type Labels } from "@/lib/translations";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -73,8 +73,10 @@ interface Props {
   snapshotText?: string;
   /** Latest scan headline/summary (used as headline for ASX signal) */
   latestHeadline?: string;
-  /** UI language passed from parent server component */
-  lang?: Lang;
+  /** UI language code for API calls */
+  lang?: string;
+  /** DB-loaded translation labels from parent server component */
+  labels?: Labels;
   /** Slot: AI Research Co-pilot chat panel — rendered immediately after TA Signal result */
   chatSlot?: React.ReactNode;
   /** Auto-run a specific analysis on mount: "ta" | "fa" | "ma" | "ca" */
@@ -178,13 +180,13 @@ function Pill({ label, value }: { label: string; value: string | null }) {
 function ChartModal({
   chart,
   onClose,
-  lang = "en",
+  labels = {},
 }: {
   chart: ChartResult;
   onClose: () => void;
-  lang?: Lang;
+  labels?: Labels;
 }) {
-  const T = (key: Parameters<typeof tFn>[1]) => tFn(lang, key);
+  const T = (key: string) => tFn(labels, key);
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4"
@@ -270,12 +272,13 @@ export default function TechAnalyticsPanel({
   snapshotText,
   latestHeadline,
   lang = "en",
+  labels = {},
   chatSlot,
   autoRun,
 }: Props) {
   const isASX = exchange === "ASX";
   const cp = isASX ? "A$" : "$";
-  const T = (key: Parameters<typeof tFn>[1]) => tFn(lang, key);
+  const T = (key: string) => tFn(labels, key);
 
   // ── TA Signal state ──────────────────────────────────────────────────────
   const [taPhase, setTaPhase] = useState<"idle" | "loading" | "done" | "error">("idle");
@@ -1031,7 +1034,7 @@ export default function TechAnalyticsPanel({
 
       {/* ── Chart Vision modal ───────────────────────────────────────────────── */}
       {showModal && chartResult && (
-        <ChartModal chart={chartResult} onClose={() => setShowModal(false)} lang={lang} />
+        <ChartModal chart={chartResult} onClose={() => setShowModal(false)} labels={labels} />
       )}
     </div>
   );
