@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { UNIVERSE, ASX_UNIVERSE, UNIVERSE_ALL } from "@/lib/universe";
 import { getTickerSnapshots, getTickerAnalyses, getTickerDiffs, getLatestAnalysisWithAgentContent, getTickerScanCount, lookupStock, getLatestMaterialEvents } from "@/lib/db";
+import { getLang } from "@/lib/getLang";
+import { loadTranslations } from "@/lib/i18n";
+import { t } from "@/lib/translations";
 import { BreakingNewsPanel } from "../../components/BreakingNewsAlert";
 import { fetchPrices } from "@/lib/price";
 import PriceChart from "./PriceChart";
@@ -78,6 +81,8 @@ export default async function TickerPage({
 }) {
   const { symbol } = await params;
   const sym = decodeURIComponent(symbol).toUpperCase();
+  const lang = await getLang();
+  const labels = await loadTranslations(lang);
 
   // Resolve display info regardless of universe membership
   let ticker: typeof UNIVERSE_ALL[number] | undefined = UNIVERSE_ALL.find((t) => t.symbol === sym);
@@ -98,7 +103,7 @@ export default async function TickerPage({
         >
           <div className="max-w-5xl mx-auto px-8 space-y-4">
             <Link href="/indexes" className="text-white/70 hover:text-white text-sm font-medium inline-block">
-              ← Back to Indexes
+              ← {t(labels, "back_to_indexes")}
             </Link>
             <div className="flex items-end gap-4 flex-wrap">
               <h1 className="text-5xl font-bold text-white drop-shadow-sm"
@@ -131,7 +136,7 @@ export default async function TickerPage({
           {prices.length > 0 && (
             <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
               <h2 className="text-lg font-bold text-gray-800 mb-4"
-                style={{ fontFamily: "var(--font-rajdhani)" }}>90-Day Price Chart</h2>
+                style={{ fontFamily: "var(--font-rajdhani)" }}>{t(labels, "ticker_price_chart")}</h2>
               <PriceChart data={prices} exchange="INDEX" />
             </div>
           )}
@@ -139,7 +144,7 @@ export default async function TickerPage({
           {/* Technical Analysis */}
           <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
             <h2 className="text-lg font-bold text-gray-800 mb-4"
-              style={{ fontFamily: "var(--font-rajdhani)" }}>Technical Analysis</h2>
+              style={{ fontFamily: "var(--font-rajdhani)" }}>{t(labels, "ticker_technical_analysis")}</h2>
             <TechAnalyticsPanel symbol={sym} exchange="INDEX" />
           </div>
         </div>
@@ -171,7 +176,7 @@ export default async function TickerPage({
           >
             <div className="max-w-5xl mx-auto px-8 space-y-4">
               <Link href="/" className="text-white/70 hover:text-white text-sm font-medium inline-block">
-                ← Back to Home
+                ← {t(labels, "back_to_home")}
               </Link>
               <div className="flex items-end gap-4 flex-wrap">
                 <h1 className="text-6xl font-bold text-white drop-shadow-sm">{sym}</h1>
@@ -302,7 +307,7 @@ export default async function TickerPage({
 
           {/* Back link */}
           <Link href="/alerts" className="text-white/70 hover:text-white text-sm font-medium inline-block">
-            ← All Alerts
+            ← {t(labels, "ticker_all_alerts")}
           </Link>
 
           {/* Ticker + company name */}
@@ -349,7 +354,7 @@ export default async function TickerPage({
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white uppercase tracking-wide text-sm shadow-md transition-all hover:brightness-110 hover:-translate-y-0.5"
               style={{ background: "#fd8412" }}
             >
-              📋 IR Signal Report →
+              📋 {t(labels, "ticker_ir_report")} →
             </Link>
             <TickerScanButton symbol={sym} isMonitored={true} resolvedUrl={ticker.url} />
           </div>
@@ -360,28 +365,28 @@ export default async function TickerPage({
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white uppercase tracking-wide text-sm shadow-md transition-all hover:brightness-110 hover:-translate-y-0.5"
               style={{ background: "#fd8412" }}
             >
-              📈 Technical Analysis (TA)
+              📈 {t(labels, "ticker_ta_btn")}
             </Link>
             <Link
               href={`/ticker/${sym}/intel?run=fa`}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white uppercase tracking-wide text-sm shadow-md transition-all hover:brightness-110 hover:-translate-y-0.5"
               style={{ background: "#fd8412" }}
             >
-              📊 Fundamental Analysis (FA)
+              📊 {t(labels, "ticker_fa_btn")}
             </Link>
             <Link
               href={`/ticker/${sym}/intel?run=ma`}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white uppercase tracking-wide text-sm shadow-md transition-all hover:brightness-110 hover:-translate-y-0.5"
               style={{ background: "#fd8412" }}
             >
-              🌐 Market Analysis (MA)
+              🌐 {t(labels, "ticker_ma_btn")}
             </Link>
             <Link
               href={`/ticker/${sym}/intel?run=ca`}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white uppercase tracking-wide text-sm shadow-md transition-all hover:brightness-110 hover:-translate-y-0.5"
               style={{ background: "#fd8412" }}
             >
-              💬 Chart Analysis (CA)
+              💬 {t(labels, "ticker_ca_btn")}
             </Link>
           </div>
         </div>
@@ -395,31 +400,76 @@ export default async function TickerPage({
         <BreakingNewsPanel events={materialEvents} />
       )}
 
+      {/* ── Price Context (moved to top per user request) ────────────────────── */}
+      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="px-8 py-6 border-b border-gray-100">
+          <h2 className="text-3xl font-bold text-[#252525]">📈 {t(labels, "ticker_price_context")}</h2>
+          <p className="text-sm text-gray-400 mt-1">{t(labels, "ticker_price_context_desc")}</p>
+        </div>
+        <div className="px-8 py-8">
+          <PriceChart
+            data={prices}
+            scanDates={snapshots.map((s) => s.fetched_at.slice(0, 10))}
+            exchange={exchangeLabel}
+          />
+          {prices.length > 0 && (() => {
+            const sorted = [...prices].sort((a, b) => a.date.localeCompare(b.date));
+            const last  = sorted[sorted.length - 1];
+            const prev  = sorted[sorted.length - 2];
+            const oneDayChange = prev ? ((last.close - prev.close) / prev.close) * 100 : null;
+            const last5 = sorted.slice(-5);
+            const low5  = Math.min(...last5.map((p) => p.close));
+            const high5 = Math.max(...last5.map((p) => p.close));
+            const cp = exchangeLabel === "ASX" ? "A$" : "$";
+            return (
+              <div className="mt-6 grid grid-cols-3 gap-6">
+                {[
+                  { label: t(labels, "ticker_last_close"), value: `${cp}${last.close.toFixed(2)}`, color: "#252525" },
+                  {
+                    label: t(labels, "ticker_1d_change"),
+                    value: oneDayChange != null
+                      ? (oneDayChange >= 0 ? "+" : "") + oneDayChange.toFixed(2) + "%"
+                      : "—",
+                    color: oneDayChange == null ? "#9ca3af" : oneDayChange >= 0 ? "#2e8b57" : "#dc2626",
+                  },
+                  { label: t(labels, "ticker_5d_range"), value: `${cp}${low5.toFixed(2)} – ${cp}${high5.toFixed(2)}`, color: "#252525" },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="bg-gray-50 rounded-xl p-5 text-center border border-gray-100">
+                    <div className="text-gray-400 text-sm mb-2">{label}</div>
+                    <div className="text-2xl font-bold" style={{ color }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
+      </div>
+
       {/* ── Agent Flow ─────────────────────────────────────────────────────── */}
       <div className="rounded-2xl border border-gray-100 bg-gray-50 px-8 py-5 space-y-3">
         <div className="flex items-center gap-3 flex-wrap text-sm font-medium text-gray-500">
           <span className="text-brand font-bold text-base">TinyFish</span>
           <span className="text-gray-300 text-lg">→</span>
-          <span>Diff Engine</span>
+          <span>{t(labels, "ticker_flow_diff")}</span>
           <span className="text-gray-300 text-lg">→</span>
           <span className={latest?.change_type === "CONTENT_CHANGE" ? "text-green-600 font-semibold" : latest?.change_type ? "text-gray-400" : ""}>
-            Signal Quality Filter
+            {t(labels, "ticker_flow_quality")}
           </span>
           <span className="text-gray-300 text-lg">→</span>
           <span className={hasAgentSignal ? "text-amber-600 font-semibold" : ""}>
-            Financial Signal Agent
+            {t(labels, "ticker_flow_signal")}
           </span>
           <span className="text-gray-300 text-lg">→</span>
           <span className={hasInvestigation ? "text-purple-600 font-semibold" : ""}>
-            Investigation Agent
+            {t(labels, "ticker_flow_investigation")}
           </span>
           <span className="text-gray-300 text-lg">→</span>
           <span className={hasValidation ? "text-blue-600 font-semibold" : ""}>
-            Cross-Validation Agent
+            {t(labels, "ticker_flow_validation")}
           </span>
           <span className="text-gray-300 text-lg">→</span>
           <span className={signalSource?.agent_what_changed ? "text-green-600 font-semibold" : ""}>
-            AI Explanation
+            {t(labels, "ticker_flow_explanation")}
           </span>
         </div>
         <div className="flex items-center gap-4 text-xs text-gray-400 flex-wrap">
@@ -442,7 +492,7 @@ export default async function TickerPage({
         <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
           <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between flex-wrap gap-3">
             <div>
-              <h2 className="text-3xl font-bold text-[#252525]">🎯 Signal Detection</h2>
+              <h2 className="text-3xl font-bold text-[#252525]">🎯 {t(labels, "ticker_signal_detection")}</h2>
               {!signalIsFromLatest && latestSignal && (
                 <p className="text-sm text-amber-600 mt-1 font-medium">
                   📅 Signal from {new Date(latestSignal.fetched_at).toLocaleDateString()} · latest scan ({new Date(latest.fetched_at).toLocaleDateString()}) returned no new signal
@@ -463,7 +513,7 @@ export default async function TickerPage({
           </div>
           <div className="px-8 py-8 grid grid-cols-2 md:grid-cols-4 gap-8">
             <div>
-              <div className="text-gray-400 text-sm mb-2 uppercase tracking-wider font-medium">Signal Type</div>
+              <div className="text-gray-400 text-sm mb-2 uppercase tracking-wider font-medium">{t(labels, "ticker_signal_type")}</div>
               <div className="font-bold text-[#252525] text-lg leading-snug">
                 {hasAgentSignal
                   ? agentSignalLabel(signalSource?.agent_signal_type ?? null)
@@ -473,13 +523,13 @@ export default async function TickerPage({
               </div>
             </div>
             <div>
-              <div className="text-gray-400 text-sm mb-2 uppercase tracking-wider font-medium">Severity</div>
+              <div className="text-gray-400 text-sm mb-2 uppercase tracking-wider font-medium">{t(labels, "ticker_severity")}</div>
               {signalSource?.agent_severity && hasAgentSignal
                 ? <SeverityBadge severity={signalSource.agent_severity} />
                 : <span className="text-gray-300 text-lg">—</span>}
             </div>
             <div>
-              <div className="text-gray-400 text-sm mb-2 uppercase tracking-wider font-medium">Confidence</div>
+              <div className="text-gray-400 text-sm mb-2 uppercase tracking-wider font-medium">{t(labels, "ticker_confidence")}</div>
               {(() => {
                 const conf = (signalSource ?? latest).agent_confidence ?? (signalSource ?? latest).confidence;
                 const pct = Math.round(conf * 100);
@@ -500,7 +550,7 @@ export default async function TickerPage({
               })()}
             </div>
             <div>
-              <div className="text-gray-400 text-sm mb-2 uppercase tracking-wider font-medium">Relevance Score</div>
+              <div className="text-gray-400 text-sm mb-2 uppercase tracking-wider font-medium">{t(labels, "ticker_relevance_score")}</div>
               {(signalSource ?? latest).financial_relevance_score != null ? (
                 <div
                   className="text-4xl font-bold"
@@ -519,7 +569,7 @@ export default async function TickerPage({
           </div>
           {(signalSource ?? latest).agent_financial_relevance && (
             <div className="px-8 pb-8">
-              <div className="text-gray-400 text-sm mb-2 uppercase tracking-wider font-medium">Financial Relevance</div>
+              <div className="text-gray-400 text-sm mb-2 uppercase tracking-wider font-medium">{t(labels, "ticker_financial_relevance")}</div>
               <p className="text-base text-gray-700 leading-relaxed">{(signalSource ?? latest).agent_financial_relevance}</p>
             </div>
           )}
@@ -530,14 +580,14 @@ export default async function TickerPage({
       {latest && (
         <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
           <div className="px-8 py-6 border-b border-gray-100">
-            <h2 className="text-3xl font-bold text-[#252525]">📊 Language Shift Scores</h2>
-            <p className="text-sm text-gray-400 mt-1">New vs. previous scan · per 1,000 words on cleaned text</p>
+            <h2 className="text-3xl font-bold text-[#252525]">📊 {t(labels, "ticker_language_shift")}</h2>
+            <p className="text-sm text-gray-400 mt-1">{t(labels, "ticker_language_shift_desc")}</p>
           </div>
           <div className="px-8 py-8 grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
-              { label: "Commitment", value: latest.commitment_delta, invert: true, hint: "↓ = risk" },
-              { label: "Hedging",    value: latest.hedging_delta,   invert: false, hint: "↑ = risk" },
-              { label: "Risk Words", value: latest.risk_delta,      invert: false, hint: "↑ = risk" },
+              { label: t(labels, "ticker_commitment"), value: latest.commitment_delta, invert: true, hint: "↓ = risk" },
+              { label: t(labels, "ticker_hedging"),    value: latest.hedging_delta,   invert: false, hint: "↑ = risk" },
+              { label: t(labels, "ticker_risk_words"), value: latest.risk_delta,      invert: false, hint: "↑ = risk" },
             ].map(({ label, value, invert, hint }) => {
               const isRisk = invert ? value < 0 : value > 0;
               const color = isRisk ? "#dc2626" : value < -0.01 || (!invert && value < 0) ? "#2e8b57" : "#9ca3af";
@@ -561,7 +611,7 @@ export default async function TickerPage({
                   : { background: "#fffbea", border: "2px solid #fd8412" }
               }
             >
-              <div className="text-gray-500 text-sm font-medium mb-1">Overall Score</div>
+              <div className="text-gray-500 text-sm font-medium mb-1">{t(labels, "ticker_overall_score")}</div>
               <div className="text-gray-400 text-xs mb-3">composite</div>
               <div
                 className="text-4xl font-bold"
@@ -588,8 +638,8 @@ export default async function TickerPage({
       {/* ── Cross-Validation ───────────────────────────────────────────────── */}
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
         <div className="px-8 py-6 border-b border-gray-100">
-          <h2 className="text-3xl font-bold text-[#252525]">🔍 Cross-Validation</h2>
-          <p className="text-sm text-gray-400 mt-1">Signal verified against filings · press releases · public sources</p>
+          <h2 className="text-3xl font-bold text-[#252525]">🔍 {t(labels, "ticker_cross_validation")}</h2>
+          <p className="text-sm text-gray-400 mt-1">{t(labels, "ticker_cross_validation_desc")}</p>
         </div>
         <div className="px-8 py-8 space-y-5">
           {hasValidation ? (
@@ -632,8 +682,8 @@ export default async function TickerPage({
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
         <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h2 className="text-3xl font-bold text-[#252525]">🔎 Investigation</h2>
-            <p className="text-sm text-gray-400 mt-1">Probes press releases · exchange filings · IR pages for corroborating evidence</p>
+            <h2 className="text-3xl font-bold text-[#252525]">🔎 {t(labels, "ticker_investigation")}</h2>
+            <p className="text-sm text-gray-400 mt-1">{t(labels, "ticker_investigation_desc")}</p>
           </div>
           {hasInvestigation && (latest?.corroborating_count ?? 0) > 0 && (
             <span className="px-4 py-2 rounded-full text-sm font-bold"
@@ -679,51 +729,6 @@ export default async function TickerPage({
         </div>
       </div>
 
-      {/* ── Price Context ──────────────────────────────────────────────────── */}
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-        <div className="px-8 py-6 border-b border-gray-100">
-          <h2 className="text-3xl font-bold text-[#252525]">📈 Price Context</h2>
-          <p className="text-sm text-gray-400 mt-1">30-day chart · orange markers = scan dates</p>
-        </div>
-        <div className="px-8 py-8">
-          <PriceChart
-            data={prices}
-            scanDates={snapshots.map((s) => s.fetched_at.slice(0, 10))}
-            exchange={exchangeLabel}
-          />
-          {prices.length > 0 && (() => {
-            const sorted = [...prices].sort((a, b) => a.date.localeCompare(b.date));
-            const last  = sorted[sorted.length - 1];
-            const prev  = sorted[sorted.length - 2];
-            const oneDayChange = prev ? ((last.close - prev.close) / prev.close) * 100 : null;
-            const last5 = sorted.slice(-5);
-            const low5  = Math.min(...last5.map((p) => p.close));
-            const high5 = Math.max(...last5.map((p) => p.close));
-            const cp = exchangeLabel === "ASX" ? "A$" : "$";
-            return (
-              <div className="mt-6 grid grid-cols-3 gap-6">
-                {[
-                  { label: "Last close", value: `${cp}${last.close.toFixed(2)}`, color: "#252525" },
-                  {
-                    label: "1d change",
-                    value: oneDayChange != null
-                      ? (oneDayChange >= 0 ? "+" : "") + oneDayChange.toFixed(2) + "%"
-                      : "—",
-                    color: oneDayChange == null ? "#9ca3af" : oneDayChange >= 0 ? "#2e8b57" : "#dc2626",
-                  },
-                  { label: "5d range", value: `${cp}${low5.toFixed(2)} – ${cp}${high5.toFixed(2)}`, color: "#252525" },
-                ].map(({ label, value, color }) => (
-                  <div key={label} className="bg-gray-50 rounded-xl p-5 text-center border border-gray-100">
-                    <div className="text-gray-400 text-sm mb-2">{label}</div>
-                    <div className="text-2xl font-bold" style={{ color }}>{value}</div>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
-        </div>
-      </div>
-
       {/* ── AI Technical Intelligence ──────────────────────────────────────── */}
       <TechAnalyticsPanel
         symbol={sym}
@@ -739,7 +744,7 @@ export default async function TickerPage({
       {/* ── Change History ─────────────────────────────────────────────────── */}
       {analyses.length > 0 && (
         <div>
-          <h2 className="text-3xl font-bold text-[#252525] mb-5">Change History</h2>
+          <h2 className="text-3xl font-bold text-[#252525] mb-5">{t(labels, "ticker_change_history")}</h2>
           <div className="space-y-3">
             {analyses.map((a) => {
               const aCats: string[] = a.categories_json ? JSON.parse(a.categories_json) : [];
@@ -793,15 +798,15 @@ export default async function TickerPage({
       {!latest && (
         <div className="bg-white border border-gray-200 rounded-2xl p-16 text-center shadow-sm">
           <div className="text-5xl mb-4">📡</div>
-          <div className="text-2xl font-bold text-gray-400 mb-3">No scan data yet</div>
+          <div className="text-2xl font-bold text-gray-400 mb-3">{t(labels, "ticker_no_data")}</div>
           <p className="text-base text-gray-400">
-            Run a scan from the home page to populate signals for {ticker.name}.
+            {t(labels, "ticker_no_data_desc")} {ticker.name}
           </p>
           <Link
             href="/"
             className="inline-block mt-6 bg-brand text-white px-8 py-3 rounded-xl text-base font-semibold hover:opacity-90"
           >
-            Go Home →
+            {t(labels, "back_to_home")} →
           </Link>
         </div>
       )}

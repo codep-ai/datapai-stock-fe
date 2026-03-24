@@ -59,7 +59,11 @@ export default async function VietnamPage() {
             </a>
           </p>
 
-          <TickerSearch placeholder={t(labels, "intel_search")} />
+          <TickerSearch
+            placeholder={t(labels, "intel_search")}
+            markets={[{ code: "HOSE", label: "HOSE" }]}
+            analyseLabel={t(labels, "analyse_btn")}
+          />
 
           <div className="flex gap-3 items-center flex-wrap">
             <Link

@@ -14,19 +14,34 @@ interface SearchResult {
   volume?: number | null;
 }
 
+type MarketOption = { code: string; label: string };
+
 export default function TickerSearch({
   placeholder,
   intelMode = false,
   onAddToWatchlist,
   showWatchlistAction = false,
+  markets,
+  analyseLabel = "Analyse",
+  noResultsLabel = "No stocks found for",
+  resultsLabel = "results · Search by ticker or company name",
 }: {
   placeholder?: string;
   intelMode?: boolean;
   onAddToWatchlist?: (symbol: string, exchange: string, name: string) => void;
   showWatchlistAction?: boolean;
+  /** Market toggle options. Defaults to [{code:"US",label:"US"},{code:"ASX",label:"ASX"}] */
+  markets?: MarketOption[];
+  analyseLabel?: string;
+  noResultsLabel?: string;
+  resultsLabel?: string;
 } = {}) {
+  const opts: MarketOption[] = markets ?? [
+    { code: "US", label: "US" },
+    { code: "ASX", label: "ASX" },
+  ];
+  const [market, setMarket] = useState(opts[0]?.code ?? "US");
   const [query, setQuery] = useState("");
-  const [market, setMarket] = useState<"US" | "ASX">("US");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -103,6 +118,8 @@ export default function TickerSearch({
         ? `/ticker/${r.symbol}/intel`
         : r.exchange === "ASX"
         ? `/asx/${r.symbol.replace(".AX", "")}`
+        : r.exchange === "HOSE"
+        ? `/ticker/${r.symbol}`
         : `/ticker/${r.symbol}`;
     setIsOpen(false);
     setQuery("");
@@ -155,33 +172,26 @@ export default function TickerSearch({
   return (
     <div ref={containerRef} className="relative" style={{ minWidth: 360 }}>
       <form onSubmit={handleSubmit} className="flex items-center gap-2 flex-wrap">
-        {/* Market toggle */}
-        <div className="flex rounded-lg overflow-hidden border border-white/30 text-sm font-semibold">
-          <button
-            type="button"
-            onClick={() => setMarket("US")}
-            className="px-3 py-2 transition-colors"
-            style={{
-              background:
-                market === "US" ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.15)",
-              color: "#fff",
-            }}
-          >
-            US
-          </button>
-          <button
-            type="button"
-            onClick={() => setMarket("ASX")}
-            className="px-3 py-2 transition-colors"
-            style={{
-              background:
-                market === "ASX" ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.15)",
-              color: "#fff",
-            }}
-          >
-            ASX
-          </button>
-        </div>
+        {/* Market toggle — only show if >1 market option */}
+        {opts.length > 1 && (
+          <div className="flex rounded-lg overflow-hidden border border-white/30 text-sm font-semibold">
+            {opts.map((m) => (
+              <button
+                key={m.code}
+                type="button"
+                onClick={() => setMarket(m.code)}
+                className="px-3 py-2 transition-colors"
+                style={{
+                  background:
+                    market === m.code ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.15)",
+                  color: "#fff",
+                }}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Symbol / company name input */}
         <input
@@ -191,12 +201,7 @@ export default function TickerSearch({
           onChange={(e) => setQuery(e.target.value.toUpperCase())}
           onFocus={() => results.length > 0 && setIsOpen(true)}
           onKeyDown={handleKeyDown}
-          placeholder={
-            placeholder ??
-            (market === "ASX"
-              ? "Search ticker or company name..."
-              : "Search ticker or company name...")
-          }
+          placeholder={placeholder ?? "Search ticker or company name..."}
           className="rounded-lg px-4 py-2 text-[#252525] font-bold text-base placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50"
           style={{ width: 280, background: "rgba(255,255,255,0.95)" }}
           autoComplete="off"
@@ -208,7 +213,7 @@ export default function TickerSearch({
           className="px-5 py-2 rounded-lg font-bold text-white uppercase tracking-wide text-sm transition-all hover:brightness-110 hover:-translate-y-0.5"
           style={{ background: "#fd8412" }}
         >
-          {loading ? "..." : "Analyse"}
+          {loading ? "..." : analyseLabel}
         </button>
       </form>
 
@@ -232,8 +237,8 @@ export default function TickerSearch({
                 <span
                   className="inline-block px-2 py-0.5 rounded text-xs font-bold"
                   style={{
-                    background: r.exchange === "ASX" ? "#dbeafe" : "#f0fdf4",
-                    color: r.exchange === "ASX" ? "#1e40af" : "#166534",
+                    background: r.exchange === "ASX" ? "#dbeafe" : r.exchange === "HOSE" ? "#fef2f2" : "#f0fdf4",
+                    color: r.exchange === "ASX" ? "#1e40af" : r.exchange === "HOSE" ? "#c8102e" : "#166534",
                   }}
                 >
                   {r.symbol.replace(".AX", "")}
@@ -302,7 +307,7 @@ export default function TickerSearch({
             </div>
           ))}
           <div className="px-4 py-1.5 text-[10px] text-gray-400 text-center border-t">
-            {results.length} results · Search by ticker or company name
+            {results.length} {resultsLabel}
           </div>
         </div>
       )}
@@ -313,7 +318,7 @@ export default function TickerSearch({
           className="absolute z-50 mt-1 w-full rounded-xl shadow-lg border border-gray-200 px-4 py-3 text-sm text-gray-500 text-center"
           style={{ background: "#fff" }}
         >
-          No stocks found for &quot;{query}&quot;
+          {noResultsLabel} &quot;{query}&quot;
         </div>
       )}
     </div>
