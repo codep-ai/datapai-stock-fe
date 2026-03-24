@@ -145,13 +145,13 @@ export default async function WatchlistPage() {
             <div className="border border-gray-200 rounded-2xl bg-white shadow-sm overflow-hidden">
               <div className="px-6 py-5 flex items-center justify-between flex-wrap gap-3" style={{ background: biasBg, borderBottom: `1px solid ${biasColor}20` }}>
                 <div>
-                  <h2 className="text-lg font-bold text-gray-800">AI Watchlist Overview</h2>
+                  <h2 className="text-lg font-bold text-gray-800">{t(labels, "wl_ai_overview")}</h2>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    AG2 multi-agent debate across {totalWithSynth}/{items.length} stocks · updated {new Date(latestComputed).toLocaleString()}
+                    {t(labels, "wl_debate_across")} {totalWithSynth}/{items.length} {t(labels, "wl_stocks")} · {t(labels, "wl_updated")} {new Date(latestComputed).toLocaleString()}
                   </p>
                 </div>
                 <span className="px-4 py-1.5 rounded-full text-sm font-bold" style={{ background: biasColor, color: "#fff" }}>
-                  {overallBias}
+                  {overallBias === "BULLISH" ? t(labels, "wl_bullish") : overallBias === "BEARISH" ? t(labels, "wl_bearish") : t(labels, "wl_mixed")}
                 </span>
               </div>
 
@@ -190,14 +190,14 @@ export default async function WatchlistPage() {
                       </div>
                       <div className="text-center p-3 rounded-xl bg-blue-50 border border-blue-100">
                         <div className="text-2xl font-bold text-blue-700">{Math.round(avgConf * 100)}%</div>
-                        <div className="text-xs text-blue-600 font-medium">Avg Confidence</div>
+                        <div className="text-xs text-blue-600 font-medium">{t(labels, "wl_avg_confidence")}</div>
                       </div>
                       <div className="text-center p-3 rounded-xl cursor-default" style={{
                         background: newsAlertCount > 0 ? "#fef2f2" : "#f9fafb",
                         border: newsAlertCount > 0 ? "1px solid #fca5a5" : "1px solid #e5e7eb",
                       }} title={newsStocks.length ? `Alerts: ${newsStocks.join(", ")}` : "No alerts"}>
                         <div className="text-2xl font-bold" style={{ color: newsAlertCount > 0 ? "#dc2626" : "#9ca3af" }}>{newsAlertCount}</div>
-                        <div className="text-xs font-medium" style={{ color: newsAlertCount > 0 ? "#dc2626" : "#9ca3af" }}>News Alerts</div>
+                        <div className="text-xs font-medium" style={{ color: newsAlertCount > 0 ? "#dc2626" : "#9ca3af" }}>{t(labels, "wl_news_alerts")}</div>
                         {newsStocks.length > 0 && (
                           <div className="text-[10px] mt-1 leading-tight" style={{ color: "#dc2626" }}>{newsStocks.map((s) => <Link key={s} href={`/ticker/${s}`} className="underline hover:text-red-800 mr-1">{s}</Link>)}</div>
                         )}
@@ -226,7 +226,7 @@ export default async function WatchlistPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {topSells.length > 0 && (
                     <div>
-                      <div className="text-xs font-bold text-red-700 uppercase tracking-wider mb-2">⚠️ Top Sell Signals</div>
+                      <div className="text-xs font-bold text-red-700 uppercase tracking-wider mb-2">⚠️ {t(labels, "wl_top_sell")}</div>
                       {topSells.map(([sym, s]) => (
                         <Link key={sym} href={`/ticker/${sym}`}
                           className="flex items-start gap-2 mb-2 p-2 rounded-lg hover:bg-red-50 transition-colors cursor-pointer">
@@ -239,7 +239,7 @@ export default async function WatchlistPage() {
                   )}
                   {topBuys.length > 0 && (
                     <div>
-                      <div className="text-xs font-bold text-green-700 uppercase tracking-wider mb-2">🟢 Top Buy Signals</div>
+                      <div className="text-xs font-bold text-green-700 uppercase tracking-wider mb-2">🟢 {t(labels, "wl_top_buy")}</div>
                       {topBuys.map(([sym, s]) => (
                         <Link key={sym} href={`/ticker/${sym}`}
                           className="flex items-start gap-2 mb-2 p-2 rounded-lg hover:bg-green-50 transition-colors cursor-pointer">
@@ -261,7 +261,7 @@ export default async function WatchlistPage() {
           <div>
             <div className="flex items-center justify-between mb-5">
               <span className="text-lg text-gray-400">
-                {items.length} ticker{items.length !== 1 ? "s" : ""} · US &amp; ASX
+                {items.length} {t(labels, "wl_stocks")}
                 {(() => {
                   const scanned = items.filter((i) => !!alertMap[i.symbol]);
                   const asxCount = items.filter((i) => i.exchange === "ASX").length;
@@ -273,8 +273,8 @@ export default async function WatchlistPage() {
                     : null;
                   return (
                     <span className="text-sm text-gray-300 ml-2">
-                      {lastScan && <>· Last scan: {lastScan} </>}
-                      · {scanned.length} scanned
+                      {lastScan && <>· {t(labels, "last_scan_label")} {lastScan} </>}
+                      · {scanned.length} {t(labels, "scanned")}
                       {asxCount > 0 && <> · {asxCount} ASX</>}
                       {usCount > 0 && <> · {usCount} US</>}
                     </span>
@@ -466,23 +466,20 @@ export default async function WatchlistPage() {
         {/* How watchlist scanning works */}
         <div className="border border-gray-200 rounded-2xl p-8 bg-white shadow-sm">
           <h3 className="font-bold text-xl text-[#252525] mb-4">
-            ⭐ How Watchlist Scanning Works
+            ⭐ {t(labels, "how_it_works")}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-base text-gray-500">
             <div>
-              <div className="font-semibold text-gray-700 mb-2">Add Any Stock</div>
-              Visit any US or ASX ticker page and click{" "}
-              <strong>⭐ Add to Watchlist</strong>. Supports NASDAQ, NYSE, and ASX.
+              <div className="font-semibold text-gray-700 mb-2">{t(labels, "step1_label")}</div>
+              {t(labels, "step1_desc")}
             </div>
             <div>
-              <div className="font-semibold text-gray-700 mb-2">Scan On Demand</div>
-              Click <strong>Scan My Watchlist</strong> above to run the full AI pipeline
-              on just your stocks — no full-universe scan needed.
+              <div className="font-semibold text-gray-700 mb-2">{t(labels, "step2_label")}</div>
+              {t(labels, "step2_desc")}
             </div>
             <div>
-              <div className="font-semibold text-gray-700 mb-2">US + ASX Mix</div>
-              Freely mix US (NASDAQ/NYSE) and Australian (ASX) stocks. Each is fetched
-              from the right source automatically.
+              <div className="font-semibold text-gray-700 mb-2">{t(labels, "step3_label")}</div>
+              {t(labels, "step3_desc")}
             </div>
           </div>
         </div>
