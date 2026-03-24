@@ -51,7 +51,7 @@ export default async function AsxPage() {
             </a>
           </p>
 
-          <TickerSearch analyseLabel={t(labels, "analyse_btn")} lang={lang} />
+          <TickerSearch placeholder={t(labels, "intel_search")} analyseLabel={t(labels, "analyse_btn")} lang={lang} />
 
           <div className="flex gap-3 items-center flex-wrap">
             <Link

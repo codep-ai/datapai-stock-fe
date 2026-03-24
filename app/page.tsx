@@ -47,7 +47,7 @@ export default async function Home() {
             {t(labels, "hero_realBrowser_agents")}
           </p>
 
-          <TickerSearch analyseLabel={t(labels, "analyse_btn")} lang={lang} />
+          <TickerSearch placeholder={t(labels, "intel_search")} analyseLabel={t(labels, "analyse_btn")} lang={lang} />
 
           <div className="flex gap-3 items-center flex-wrap">
             {alertCount > 0 && (
