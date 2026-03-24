@@ -371,33 +371,34 @@ export async function classifyChangeType(
   }
 }
 
-/** Human-readable label for agent signal types. */
-export function agentSignalLabel(signalType: string | null): string {
-  const labels: Record<string, string> = {
-    GUIDANCE_WITHDRAWAL: "Forward Guidance Withdrawal",
-    RISK_DISCLOSURE_EXPANSION: "Risk Disclosure Expansion",
-    TONE_SOFTENING: "Tone Softening",
+/** Human-readable label for agent signal types (i18n-aware). */
+export function agentSignalLabel(signalType: string | null, i18n?: Record<string, string>): string {
+  const map: Record<string, string> = {
+    GUIDANCE_WITHDRAWAL: i18n?.signal_guidance_withdrawal ?? "Forward Guidance Withdrawal",
+    RISK_DISCLOSURE_EXPANSION: i18n?.signal_risk_expansion ?? "Risk Disclosure Expansion",
+    TONE_SOFTENING: i18n?.signal_tone_softening ?? "Tone Softening",
+    NO_SIGNAL: i18n?.signal_no_signal ?? "No signal",
   };
-  return signalType ? (labels[signalType] ?? signalType.replace(/_/g, " ")) : "No signal";
+  return signalType ? (map[signalType] ?? signalType.replace(/_/g, " ")) : (i18n?.signal_no_signal ?? "No signal");
 }
 
-/** Human-readable label for validation status. */
-export function validationLabel(status: string | null): string {
-  const labels: Record<string, string> = {
-    CONFIRMED: "Confirmed",
-    PARTIALLY_CONFIRMED: "Partially Confirmed",
-    NOT_CONFIRMED_YET: "Not Confirmed Yet",
-    SOURCE_UNAVAILABLE: "Source Unavailable",
+/** Human-readable label for validation status (i18n-aware). */
+export function validationLabel(status: string | null, i18n?: Record<string, string>): string {
+  const map: Record<string, string> = {
+    CONFIRMED: i18n?.validation_confirmed ?? "Confirmed",
+    PARTIALLY_CONFIRMED: i18n?.validation_partially ?? "Partially Confirmed",
+    NOT_CONFIRMED_YET: i18n?.validation_not_yet ?? "Not Confirmed Yet",
+    SOURCE_UNAVAILABLE: i18n?.validation_unavailable ?? "Source Unavailable",
   };
-  return status ? (labels[status] ?? status.replace(/_/g, " ")) : "Unknown";
+  return status ? (map[status] ?? status.replace(/_/g, " ")) : "Unknown";
 }
 
-/** v1.5 — Human-readable label for change type. */
-export function changeTypeLabel(changeType: string | null): string {
-  const labels: Record<string, string> = {
-    CONTENT_CHANGE: "Content Change",
-    ARCHIVE_CHANGE: "Archive Change",
-    LAYOUT_CHANGE: "Layout Change",
+/** v1.5 — Human-readable label for change type (i18n-aware). */
+export function changeTypeLabel(changeType: string | null, i18n?: Record<string, string>): string {
+  const map: Record<string, string> = {
+    CONTENT_CHANGE: i18n?.change_content ?? "Content Change",
+    ARCHIVE_CHANGE: i18n?.change_archive ?? "Archive Change",
+    LAYOUT_CHANGE: i18n?.change_layout ?? "Layout Change",
   };
-  return changeType ? (labels[changeType] ?? changeType.replace(/_/g, " ")) : "Unknown";
+  return changeType ? (map[changeType] ?? changeType.replace(/_/g, " ")) : "Unknown";
 }

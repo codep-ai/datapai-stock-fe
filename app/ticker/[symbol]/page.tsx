@@ -32,7 +32,7 @@ function ValidationBadge({ status }: { status: string | null }) {
       className="inline-flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-full"
       style={{ background: c.bg, border: `2px solid ${c.border}`, color: c.text }}
     >
-      {c.icon} {validationLabel(s)}
+      {c.icon} {validationLabel(s, labels)}
     </span>
   );
 }
@@ -50,7 +50,7 @@ function ChangeTypeBadge({ changeType }: { changeType: string | null }) {
       className="text-xs font-semibold px-3 py-1 rounded-full"
       style={{ background: c.bg, border: `1.5px solid ${c.border}`, color: c.text }}
     >
-      {changeTypeLabel(changeType)}
+      {changeTypeLabel(changeType, labels)}
     </span>
   );
 }
@@ -522,7 +522,7 @@ export default async function TickerPage({
             <div className="flex items-center gap-3 flex-wrap">
               <ChangeTypeBadge changeType={latest.change_type} />
               <span className="text-base text-gray-400">
-                {hasAgentSignal ? "Detected & powered by DataP.ai Financial Agents" : "Monitored · no signal"}
+                {hasAgentSignal ? t(labels, "ticker_detected_powered") : t(labels, "ticker_monitored_no_signal")}
               </span>
             </div>
           </div>
@@ -531,10 +531,10 @@ export default async function TickerPage({
               <div className="text-gray-400 text-sm mb-2 uppercase tracking-wider font-medium">{t(labels, "ticker_signal_type")}</div>
               <div className="font-bold text-[#252525] text-lg leading-snug">
                 {hasAgentSignal
-                  ? agentSignalLabel(signalSource?.agent_signal_type ?? null)
+                  ? agentSignalLabel(signalSource?.agent_signal_type ?? null, labels)
                   : latestIsNoSignal
-                  ? <span className="text-green-600 font-semibold text-base">✓ All clear</span>
-                  : <span className="text-gray-300 font-normal">Not yet detected</span>}
+                  ? <span className="text-green-600 font-semibold text-base">✓ {t(labels, "ticker_all_clear")}</span>
+                  : <span className="text-gray-300 font-normal">{t(labels, "ticker_not_detected")}</span>}
               </div>
             </div>
             <div>
@@ -549,7 +549,7 @@ export default async function TickerPage({
                 const conf = (signalSource ?? latest).agent_confidence ?? (signalSource ?? latest).confidence;
                 const pct = Math.round(conf * 100);
                 const color = conf >= 0.7 ? "#2e8b57" : conf >= 0.4 ? "#f97316" : "#9ca3af";
-                const label = conf >= 0.7 ? "High" : conf >= 0.4 ? "Growing" : "Early signal";
+                const label = conf >= 0.7 ? t(labels, "conf_high") : conf >= 0.4 ? t(labels, "conf_growing") : t(labels, "conf_early");
                 const tooltip = conf < 0.5
                   ? "Confidence increases with more scan history and corroborating sources"
                   : undefined;
@@ -668,7 +668,7 @@ export default async function TickerPage({
                 <ValidationBadge status={signalSource?.validation_status ?? null} />
                 {signalSource?.agent_signal_type && signalSource.agent_signal_type !== "NO_SIGNAL" && (
                   <span className="text-base text-gray-500">
-                    Signal: <strong>{agentSignalLabel(signalSource.agent_signal_type)}</strong>
+                    Signal: <strong>{agentSignalLabel(signalSource.agent_signal_type, labels)}</strong>
                   </span>
                 )}
               </div>
@@ -776,7 +776,7 @@ export default async function TickerPage({
                       <ChangeTypeBadge changeType={a.change_type} />
                       {a.agent_signal_type && (
                         <span className="text-xs px-3 py-1 rounded-full bg-amber-50 text-amber-700 font-semibold">
-                          {agentSignalLabel(a.agent_signal_type)}
+                          {agentSignalLabel(a.agent_signal_type, labels)}
                         </span>
                       )}
                       {(a.corroborating_count ?? 0) > 0 && (
