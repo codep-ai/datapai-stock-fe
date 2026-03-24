@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 
 // ─── Badge helpers ────────────────────────────────────────────────────────────
 
-function ValidationBadge({ status }: { status: string | null }) {
+function ValidationBadge({ status, i18n }: { status: string | null; i18n?: Record<string, string> }) {
   const config: Record<string, { bg: string; border: string; text: string; icon: string }> = {
     CONFIRMED:           { bg: "#f0fdf4", border: "#4ade80", text: "#166534", icon: "✓" },
     PARTIALLY_CONFIRMED: { bg: "#fffbea", border: "#fd8412", text: "#92400e", icon: "~" },
@@ -32,12 +32,12 @@ function ValidationBadge({ status }: { status: string | null }) {
       className="inline-flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-full"
       style={{ background: c.bg, border: `2px solid ${c.border}`, color: c.text }}
     >
-      {c.icon} {validationLabel(s, labels)}
+      {c.icon} {validationLabel(s, i18n)}
     </span>
   );
 }
 
-function ChangeTypeBadge({ changeType }: { changeType: string | null }) {
+function ChangeTypeBadge({ changeType, i18n }: { changeType: string | null; i18n?: Record<string, string> }) {
   if (!changeType) return null;
   const config: Record<string, { bg: string; border: string; text: string }> = {
     CONTENT_CHANGE: { bg: "#f0fdf4", border: "#4ade80", text: "#166534" },
@@ -50,7 +50,7 @@ function ChangeTypeBadge({ changeType }: { changeType: string | null }) {
       className="text-xs font-semibold px-3 py-1 rounded-full"
       style={{ background: c.bg, border: `1.5px solid ${c.border}`, color: c.text }}
     >
-      {changeTypeLabel(changeType, labels)}
+      {changeTypeLabel(changeType, i18n)}
     </span>
   );
 }
@@ -520,7 +520,7 @@ export default async function TickerPage({
               )}
             </div>
             <div className="flex items-center gap-3 flex-wrap">
-              <ChangeTypeBadge changeType={latest.change_type} />
+              <ChangeTypeBadge changeType={latest.change_type} i18n={labels} />
               <span className="text-base text-gray-400">
                 {hasAgentSignal ? t(labels, "ticker_detected_powered") : t(labels, "ticker_monitored_no_signal")}
               </span>
@@ -578,7 +578,7 @@ export default async function TickerPage({
                   {Math.round(((signalSource ?? latest).financial_relevance_score ?? 0) * 100)}%
                 </div>
               ) : (
-                <ValidationBadge status={(signalSource ?? latest).validation_status} />
+                <ValidationBadge status={(signalSource ?? latest).validation_status} i18n={labels} />
               )}
             </div>
           </div>
@@ -665,7 +665,7 @@ export default async function TickerPage({
                 </p>
               )}
               <div className="flex items-center gap-4 flex-wrap">
-                <ValidationBadge status={signalSource?.validation_status ?? null} />
+                <ValidationBadge status={signalSource?.validation_status ?? null} i18n={labels} />
                 {signalSource?.agent_signal_type && signalSource.agent_signal_type !== "NO_SIGNAL" && (
                   <span className="text-base text-gray-500">
                     Signal: <strong>{agentSignalLabel(signalSource.agent_signal_type, labels)}</strong>
@@ -773,7 +773,7 @@ export default async function TickerPage({
                       {new Date(a.fetched_at).toLocaleString()}
                     </div>
                     <div className="flex gap-2 mt-1 flex-wrap items-center">
-                      <ChangeTypeBadge changeType={a.change_type} />
+                      <ChangeTypeBadge changeType={a.change_type} i18n={labels} />
                       {a.agent_signal_type && (
                         <span className="text-xs px-3 py-1 rounded-full bg-amber-50 text-amber-700 font-semibold">
                           {agentSignalLabel(a.agent_signal_type, labels)}
@@ -790,7 +790,7 @@ export default async function TickerPage({
                           {c.replace(/_/g, " ")}
                         </span>
                       ))}
-                      {a.validation_status && <ValidationBadge status={a.validation_status} />}
+                      {a.validation_status && <ValidationBadge status={a.validation_status} i18n={labels} />}
                       <span className="text-sm text-gray-400">conf {Math.round(a.confidence * 100)}%</span>
                     </div>
                   </div>
