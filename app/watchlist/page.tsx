@@ -5,7 +5,7 @@
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getWatchlist, getAlertSummaryMap, getLatestPricesForWatchlist, getMaterialEventsForTickers, getStockSynthesisFlexible, getLocalizedNames, type StockSynthesis } from "@/lib/db";
+import { getWatchlist, getAlertSummaryMap, getLatestPricesForWatchlist, getMaterialEventsForTickers, getStockSynthesisFlexible, lookupStock, type StockSynthesis } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
 import { getLang } from "@/lib/getLang";
 import { loadTranslations } from "@/lib/i18n";
@@ -26,7 +26,17 @@ export default async function WatchlistPage() {
   const lang = await getLang();
   const labels = await loadTranslations(lang);
 
-  const items = await getWatchlist(user.userId);
+  const rawItems = await getWatchlist(user.userId);
+  // Look up localized names from stock_directory
+  const nameEntries = await Promise.all(
+    rawItems.map(async (i) => {
+      const entry = await lookupStock(i.symbol, lang);
+      return [i.symbol, entry?.name ?? i.name ?? i.symbol] as [string, string];
+    })
+  );
+  const nameMap = Object.fromEntries(nameEntries);
+  const items = rawItems.map((i) => ({ ...i, name: nameMap[i.symbol] ?? i.name }));
+
   const [alertMap, priceMap, newsMap] = await Promise.all([
     getAlertSummaryMap(),
     getLatestPricesForWatchlist(items.map((i) => ({ symbol: i.symbol, exchange: i.exchange }))),
