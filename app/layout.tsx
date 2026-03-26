@@ -70,6 +70,14 @@ export default async function RootLayout({
                 style={{ fontSize: "0.92rem" }}>{t(labels, "nav_asx")}</a>
               <a href="/vietnam" className="text-gray-500 hover:text-[#c8102e] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
                 style={{ fontSize: "0.92rem" }}>{t(labels, "nav_vietnam")}</a>
+              <a href="/hongkong" className="text-gray-500 hover:text-[#d32f2f] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
+                style={{ fontSize: "0.92rem" }}>{t(labels, "nav_hongkong")}</a>
+              <a href="/thailand" className="text-gray-500 hover:text-[#1a237e] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
+                style={{ fontSize: "0.92rem" }}>{t(labels, "nav_thailand")}</a>
+              <a href="/malaysia" className="text-gray-500 hover:text-[#0c4da2] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
+                style={{ fontSize: "0.92rem" }}>{t(labels, "nav_malaysia")}</a>
+              <a href="/indonesia" className="text-gray-500 hover:text-[#e53935] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
+                style={{ fontSize: "0.92rem" }}>{t(labels, "nav_indonesia")}</a>
               <a href="/alerts" className="text-gray-500 hover:text-[#2e8b57] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
                 style={{ fontSize: "0.92rem" }}>{t(labels, "nav_alerts")}</a>
               <a href="/watchlist" className="text-gray-500 hover:text-[#2e8b57] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
@@ -143,9 +151,20 @@ export default async function RootLayout({
 
         {/* Footer */}
         <footer style={{ background: "#252525" }} className="mt-16">
-          {/* ── Prominent Disclaimer Banner ── */}
+          {/* ── ASIC-style General Advice Warning ── */}
           <div style={{ background: "linear-gradient(90deg, #1a1a2e, #16213e)" }} className="border-t border-amber-500/30">
-            <div className="max-w-7xl mx-auto px-6 py-4">
+            <div className="max-w-7xl mx-auto px-6 py-4 space-y-3">
+              {/* General Advice Warning (ASIC RG 244 compliant, i18n) */}
+              <div className="flex items-start gap-3 bg-red-950/40 border border-red-500/20 rounded-xl px-5 py-4">
+                <span className="text-red-400 text-xl flex-shrink-0 mt-0.5">&#9888;</span>
+                <div>
+                  <p className="text-red-200 text-sm font-bold mb-1">{t(labels, "asic_warning_title")}</p>
+                  <p className="text-red-100/80 text-xs leading-relaxed">
+                    {t(labels, "asic_warning_body")}
+                  </p>
+                </div>
+              </div>
+              {/* AI Disclaimer */}
               <div className="flex items-start gap-3 bg-amber-950/40 border border-amber-500/20 rounded-xl px-5 py-4">
                 <span className="text-amber-400 text-xl flex-shrink-0 mt-0.5">&#9888;</span>
                 <div>
@@ -184,6 +203,22 @@ export default async function RootLayout({
               <span>{t(labels, "footer_websiteIntel")}</span>
               <a href="/pricing" className="text-[#8fbc8f] hover:text-[#a8d5a8] transition-colors">{t(labels, "nav_pricing")}</a>
               <a href="https://platform.datap.ai/bi" target="_blank" rel="noopener noreferrer" className="text-[#8fbc8f] hover:text-[#a8d5a8] transition-colors">platform.datap.ai</a>
+            </div>
+
+            {/* Company info */}
+            <div className="border-t border-gray-700 mt-6 pt-5 text-center space-y-1">
+              <p className="text-gray-500 text-xs">
+                &copy; 2020–2026 AWSME Pty Ltd &middot;{" "}
+                <a href="/terms" className="text-[#8fbc8f] hover:text-[#a8d5a8] transition-colors">Terms</a> &middot;{" "}
+                <a href="/privacy" className="text-[#8fbc8f] hover:text-[#a8d5a8] transition-colors">Privacy</a>
+              </p>
+              <p className="text-gray-600 text-xs">
+                Suite 2/200 Mona Vale Rd, St Ives NSW 2075
+              </p>
+              <p className="text-gray-600 text-xs">
+                <a href="tel:+61431525939" className="hover:text-gray-400 transition-colors">0431 525 939</a> &middot;{" "}
+                <a href="mailto:info@datap.ai" className="text-[#8fbc8f] hover:text-[#a8d5a8] transition-colors">info@datap.ai</a>
+              </p>
             </div>
           </div>
         </footer>

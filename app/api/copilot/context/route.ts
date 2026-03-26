@@ -159,8 +159,9 @@ export async function GET(req: Request) {
       }
 
       // Fetch prices and news for watchlist stocks
+      const sfx: Record<string, string> = { ASX: ".AX", HOSE: ".VN", HKEX: ".HK", SET: ".BK", KLSE: ".KL", IDX: ".JK" };
       const priceItems = watchlist.map((w) => ({
-        symbol: w.exchange === "ASX" ? `${w.symbol}.AX` : w.symbol,
+        symbol: sfx[w.exchange] ? `${w.symbol}${sfx[w.exchange]}` : w.symbol,
         exchange: w.exchange,
       }));
       const [priceMap, newsMap] = await Promise.all([
@@ -173,7 +174,7 @@ export async function GET(req: Request) {
       ]);
 
       const stockSummaries = watchlist.map((w) => {
-        const pKey = w.exchange === "ASX" ? `${w.symbol}.AX` : w.symbol;
+        const pKey = sfx[w.exchange] ? `${w.symbol}${sfx[w.exchange]}` : w.symbol;
         const price = priceMap[pKey];
         const news = newsMap[w.symbol] ?? [];
         const cp = w.exchange === "ASX" ? "A$" : "$";

@@ -115,13 +115,14 @@ export default function TickerSearch({
   }, []);
 
   function navigateTo(r: SearchResult) {
+    const suffixes: Record<string, string> = { ASX: ".AX", HOSE: ".VN", HKEX: ".HK", SET: ".BK", KLSE: ".KL", IDX: ".JK" };
+    const cleanSym = suffixes[r.exchange] ? r.symbol.replace(suffixes[r.exchange], "") : r.symbol;
+    const exchangeRoutes: Record<string, string> = { ASX: "asx", HKEX: "hongkong", SET: "thailand", KLSE: "malaysia", IDX: "indonesia", HOSE: "vietnam" };
     const path =
       intelMode
         ? `/ticker/${r.symbol}/intel`
-        : r.exchange === "ASX"
-        ? `/asx/${r.symbol.replace(".AX", "")}`
-        : r.exchange === "HOSE"
-        ? `/ticker/${r.symbol}`
+        : exchangeRoutes[r.exchange]
+        ? `/${exchangeRoutes[r.exchange]}/${cleanSym}`
         : `/ticker/${r.symbol}`;
     setIsOpen(false);
     setQuery("");

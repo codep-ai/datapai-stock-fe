@@ -99,7 +99,8 @@ export async function POST(
     const dbEntry = await lookupStock(symbol);
     exchange = dbEntry?.exchange ?? "US";
   } catch { exchange = "US"; }
-  const suffix = exchange === "ASX" ? ".AX" : "";
+  const suffixMap: Record<string, string> = { ASX: ".AX", HOSE: ".VN", HKEX: ".HK", SET: ".BK", KLSE: ".KL", IDX: ".JK" };
+  const suffix = suffixMap[exchange] ?? "";
 
   // ── 4. Call Python backend ────────────────────────────────────────────────
   try {

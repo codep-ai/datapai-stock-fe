@@ -761,6 +761,10 @@ export async function getLatestPricesForWatchlist(
     const candidates: string[] = [item.symbol];
     if (item.exchange === "ASX") candidates.push(`${item.symbol}.AX`);
     if (item.exchange === "HOSE") candidates.push(`${item.symbol}.VN`);
+    if (item.exchange === "HKEX") candidates.push(`${item.symbol}.HK`);
+    if (item.exchange === "SET") candidates.push(`${item.symbol}.BK`);
+    if (item.exchange === "KLSE") candidates.push(`${item.symbol}.KL`);
+    if (item.exchange === "IDX") candidates.push(`${item.symbol}.JK`);
     symbolToTickers[item.symbol] = candidates;
     allTickers.push(...candidates);
   }
@@ -947,6 +951,11 @@ export async function getMaterialEventsForTickers(
   for (const t of tickers) {
     const candidates = [t.symbol];
     if (t.exchange === "ASX") candidates.push(`${t.symbol}.AX`);
+    if (t.exchange === "HOSE") candidates.push(`${t.symbol}.VN`);
+    if (t.exchange === "HKEX") candidates.push(`${t.symbol}.HK`);
+    if (t.exchange === "SET") candidates.push(`${t.symbol}.BK`);
+    if (t.exchange === "KLSE") candidates.push(`${t.symbol}.KL`);
+    if (t.exchange === "IDX") candidates.push(`${t.symbol}.JK`);
     symbolToTickers[t.symbol] = candidates;
     allTickers.push(...candidates);
   }
@@ -1011,13 +1020,17 @@ export async function getStockSynthesisFlexible(symbol: string, exchange: string
   // Try exact match first
   let result = await getStockSynthesis(symbol, exchange);
   if (result) return result;
-  // ASX: try with .AX suffix
-  if (exchange === "ASX") {
-    result = await getStockSynthesis(`${symbol}.AX`, exchange);
+  // Try with exchange-specific yfinance suffix
+  const suffixMap: Record<string, string> = {
+    ASX: ".AX", HOSE: ".VN", HKEX: ".HK", SET: ".BK", KLSE: ".KL", IDX: ".JK",
+  };
+  const suffix = suffixMap[exchange];
+  if (suffix) {
+    result = await getStockSynthesis(`${symbol}${suffix}`, exchange);
     if (result) return result;
   }
   // US: try without exchange variants
-  if (exchange !== "ASX") {
+  if (!suffix) {
     for (const ex of ["US", "NASDAQ", "NYSE"]) {
       result = await getStockSynthesis(symbol, ex);
       if (result) return result;

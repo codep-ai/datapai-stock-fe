@@ -12,7 +12,7 @@ import { getActiveStocks } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-const ALL_EXCHANGES = ["NASDAQ", "NYSE", "ASX", "HOSE", "HNX"];
+const ALL_EXCHANGES = ["NASDAQ", "NYSE", "ASX", "HOSE", "HNX", "HKEX", "SET", "KLSE", "IDX"];
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);

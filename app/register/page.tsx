@@ -73,6 +73,7 @@ export default function RegisterPage() {
   const [confirm, setConfirm]   = useState("");
   const [error, setError]       = useState("");
   const [loading, setLoading]   = useState(false);
+  const [agreedTerms, setAgreedTerms] = useState(false);
   const router = useRouter();
 
   const passwordValid = useMemo(
@@ -84,6 +85,10 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
 
+    if (!agreedTerms) {
+      setError("You must agree to the Terms of Service and Privacy Policy to create an account");
+      return;
+    }
     if (!passwordValid) {
       setError("Please meet all password requirements");
       return;
@@ -186,9 +191,28 @@ export default function RegisterPage() {
             )}
           </div>
 
+          {/* Terms & conditions agreement */}
+          <div className="flex items-start gap-3 py-2">
+            <input
+              id="terms"
+              type="checkbox"
+              checked={agreedTerms}
+              onChange={(e) => setAgreedTerms(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+            />
+            <label htmlFor="terms" className="text-xs text-gray-500 leading-relaxed cursor-pointer">
+              I have read and agree to the{" "}
+              <a href="/terms" target="_blank" className="text-indigo-600 hover:underline font-medium">Terms of Service</a>
+              {" "}and{" "}
+              <a href="/privacy" target="_blank" className="text-indigo-600 hover:underline font-medium">Privacy Policy</a>.
+              I understand that DataP.ai provides AI-generated market intelligence for informational and educational purposes only,
+              and does not constitute financial advice.
+            </label>
+          </div>
+
           <button
             type="submit"
-            disabled={loading || !passwordValid}
+            disabled={loading || !passwordValid || !agreedTerms}
             className="w-full py-3 rounded-xl font-bold text-white text-base transition-all hover:brightness-110 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ background: "#6366f1" }}
           >

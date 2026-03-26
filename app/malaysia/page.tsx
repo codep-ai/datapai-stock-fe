@@ -1,6 +1,6 @@
 /**
- * /vietnam  —  Vietnamese Stocks (HOSE + HNX)
- * 691 tickers in DB, top-20 blue chips shown, rest searchable.
+ * /malaysia  —  Malaysia Stocks (Bursa Malaysia / KLSE)
+ * 200+ tickers in DB, top-20 blue chips shown, rest searchable. Targeting Malaysian + SE Asian investors.
  */
 
 import Link from "next/link";
@@ -14,28 +14,27 @@ import StockViewToggle from "../components/StockViewToggle";
 
 export const dynamic = "force-dynamic";
 
-function fmtVND(value: number): string {
-  // VN stock prices are in VND (thousands), format with dot separators
-  return value.toLocaleString("vi-VN");
+function fmtMYR(value: number): string {
+  return value.toLocaleString("ms-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export default async function VietnamPage() {
+export default async function MalaysiaPage() {
   const lang = await getLang();
-  const stocks = await getActiveStocks("HOSE", lang, 30, true);
-  const [labels, alertMap, scannedSet, recentRuns, priceMap, totalVn] = await Promise.all([
+  const stocks = await getActiveStocks("KLSE", lang, 30, true);
+  const [labels, alertMap, scannedSet, recentRuns, priceMap, totalMy] = await Promise.all([
     loadTranslations(lang),
     getAlertSummaryMap(),
     getScannedTickerSet(),
     getRecentRuns(3),
-    getLatestPricesForWatchlist(stocks.map((s) => ({ symbol: s.symbol, exchange: "HOSE" }))),
-    countActiveStocks("HOSE"),
+    getLatestPricesForWatchlist(stocks.map((s) => ({ symbol: s.symbol, exchange: "KLSE" }))),
+    countActiveStocks("KLSE"),
   ]);
   const lastRun = recentRuns[0] ?? null;
-  const vnAlertCount = stocks.filter((s) => !!alertMap[s.symbol]).length;
+  const myAlertCount = stocks.filter((s) => !!alertMap[s.symbol]).length;
 
   return (
     <div>
-      {/* ── Full-width hero (red/gold — Vietnamese flag feel) ── */}
+      {/* ── Full-width hero (red/white — HK flag feel) ── */}
       <div
         className="w-full flex flex-col justify-center"
         style={{
@@ -46,12 +45,12 @@ export default async function VietnamPage() {
       >
         <div className="max-w-6xl mx-auto px-6 space-y-3">
           <h1 className="text-2xl font-bold text-white">
-            {t(labels, "hero_title_vn")}
+            {t(labels, "hero_title_klse")}
           </h1>
 
           <p className="text-white/80 text-sm font-medium">
-            {t(labels, "section_vn_market")} —{" "}
-            <span className="text-white font-bold">{totalVn.toLocaleString()} {t(labels, "hero_stocks_covered")}</span>{" "}
+            {t(labels, "section_klse_market")} —{" "}
+            <span className="text-white font-bold">{totalMy.toLocaleString()} {t(labels, "hero_stocks_covered")}</span>{" "}
             · {t(labels, "hero_powered_by")}{" "}
             <a href="https://tinyfish.ai" target="_blank" rel="noopener noreferrer"
               className="text-white font-bold underline underline-offset-2 hover:text-white/80 transition-colors">
@@ -61,7 +60,7 @@ export default async function VietnamPage() {
 
           <TickerSearch
             placeholder={t(labels, "intel_search")}
-            markets={[{ code: "HOSE", label: "HOSE" }]}
+            markets={[{ code: "KLSE", label: "KLSE" }]}
             analyseLabel={t(labels, "analyse_btn")}
             lang={lang}
           />
@@ -92,19 +91,19 @@ export default async function VietnamPage() {
             <span className="text-gray-300">·</span>
             <span><strong>{lastRun.scanned_count}</strong> {t(labels, "scanned")}</span>
             <span className="text-gray-300">·</span>
-            <span style={{ color: "#2e8b57" }}><strong>{vnAlertCount}</strong> {t(labels, "tickers_with_data")}</span>
+            <span style={{ color: "#2e8b57" }}><strong>{myAlertCount}</strong> {t(labels, "tickers_with_data")}</span>
             <Link href={`/run/${lastRun.id}`} className="ml-auto text-gray-400 hover:text-gray-700 underline underline-offset-2 text-xs">
               {t(labels, "view_run_detail")} →
             </Link>
           </div>
         )}
 
-        {/* VN Blue Chips */}
+        {/* HK Blue Chips */}
         <div>
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-3xl font-bold text-[#252525]">
-              🇻🇳 {t(labels, "section_top_stocks")}
-              <span className="text-lg font-normal text-gray-400 ml-2">{t(labels, "section_vn_market")}</span>
+              🇲🇾 {t(labels, "section_top_stocks")}
+              <span className="text-lg font-normal text-gray-400 ml-2">{t(labels, "section_klse_market")}</span>
             </h2>
             <div className="flex items-center gap-4 text-sm text-gray-400">
               <Link href="/alerts" className="hover:underline" style={{ color: "#2e8b57" }}>{t(labels, "hero_view_alerts")} →</Link>
@@ -142,7 +141,7 @@ export default async function VietnamPage() {
                         </span>
                       )}
                       <div className="absolute top-1.5 right-1.5 z-10">
-                        <WatchlistButton compact symbol={tk.symbol} exchange="HOSE" name={tk.name} />
+                        <WatchlistButton compact symbol={tk.symbol} exchange="KLSE" name={tk.name} />
                       </div>
                       <Link href={`/ticker/${tk.symbol}`} className="block pr-6">
                         <div className="font-bold text-base group-hover:opacity-80" style={{ color: "#2e8b57" }}>{tk.symbol}</div>
@@ -150,7 +149,7 @@ export default async function VietnamPage() {
                         <div className="mt-2 space-y-0.5">
                           {price && closeNum !== null && !isNaN(closeNum) ? (
                             <>
-                              <div className="text-sm font-semibold text-gray-700">₫{fmtVND(closeNum)}</div>
+                              <div className="text-sm font-semibold text-gray-700">RM{fmtMYR(closeNum)}</div>
                               <div className="text-xs font-medium" style={{ color: isUp ? "#16a34a" : "#dc2626" }}>
                                 {changePct !== null && !isNaN(changePct) ? `${isUp ? "+" : ""}${changePct.toFixed(2)}%` : ""}
                               </div>
@@ -210,14 +209,14 @@ export default async function VietnamPage() {
                           </td>
                           <td className="px-4 py-3 text-gray-500 truncate max-w-[200px]">{tk.name}</td>
                           <td className="px-4 py-3 text-right font-semibold text-gray-700">
-                            {closeNum !== null && !isNaN(closeNum) ? `₫${fmtVND(closeNum)}` : "—"}
+                            {closeNum !== null && !isNaN(closeNum) ? `RM${fmtMYR(closeNum)}` : "—"}
                           </td>
                           <td className="px-4 py-3 text-right font-semibold" style={{ color: isUp ? "#16a34a" : "#dc2626" }}>
                             {changePct !== null && !isNaN(changePct) ? `${isUp ? "+" : ""}${changePct.toFixed(2)}%` : "—"}
                           </td>
                           <td className="px-4 py-3 text-right text-xs text-gray-400">{price?.trade_date ?? "—"}</td>
                           <td className="px-4 py-3 text-center">
-                            <WatchlistButton compact symbol={tk.symbol} exchange="HOSE" name={tk.name} />
+                            <WatchlistButton compact symbol={tk.symbol} exchange="KLSE" name={tk.name} />
                           </td>
                         </tr>
                       );
@@ -231,7 +230,7 @@ export default async function VietnamPage() {
           })()}
         </div>
 
-        {/* How it works for Vietnam */}
+        {/* How it works */}
         <div>
           <h2 className="text-2xl font-bold text-[#252525] mb-5">{t(labels, "how_it_works")}</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -250,10 +249,10 @@ export default async function VietnamPage() {
           </div>
         </div>
 
-        {/* Vietnam-specific trust note */}
+        {/* HK-specific trust note */}
         <div className="border border-red-200 rounded-2xl p-8 bg-white shadow-sm">
           <h3 className="font-bold text-xl mb-4" style={{ color: "#2e8b57" }}>
-            🇻🇳 {t(labels, "section_vn_market")} — {t(labels, "trust_title")}
+            🇲🇾 {t(labels, "section_klse_market")} — {t(labels, "trust_title")}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-base text-gray-500">
             <div>
