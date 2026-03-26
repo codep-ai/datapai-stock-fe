@@ -1,6 +1,6 @@
 import Link from "next/link";
 // DB is the single source of truth for stock info — no hardcoded arrays
-import { getTickerSnapshots, getTickerAnalyses, getTickerDiffs, getLatestAnalysisWithAgentContent, getTickerScanCount, lookupStock, getLatestMaterialEvents } from "@/lib/db";
+import { getTickerSnapshots, getTickerAnalyses, getTickerDiffs, getLatestAnalysisWithAgentContent, getTickerScanCount, lookupStock, getLatestMaterialEvents, getStockFundamentals } from "@/lib/db";
 import { getLang } from "@/lib/getLang";
 import { loadTranslations } from "@/lib/i18n";
 import { t } from "@/lib/translations";
@@ -13,6 +13,7 @@ import { resolveTickerUrl } from "@/lib/scan-pipeline";
 import TickerScanButton from "../../components/TickerScanButton";
 import WatchlistButton from "../../components/WatchlistButton";
 import TechAnalyticsPanel from "../../components/TechAnalyticsPanel";
+import StockSnapshot from "../../components/StockSnapshot";
 
 export const dynamic = "force-dynamic";
 
@@ -261,12 +262,13 @@ export default async function TickerPage({
     }
   }
 
-  const [snapshots, analyses, diffs, prices, materialEvents] = await Promise.all([
+  const [snapshots, analyses, diffs, prices, materialEvents, fundamentals] = await Promise.all([
     getTickerSnapshots(sym, 5),
     getTickerAnalyses(sym, 5),
     getTickerDiffs(sym, 5),
-    fetchPrices(sym, 30, exchangeLabel),
+    fetchPrices(sym, 365, exchangeLabel),
     getLatestMaterialEvents(sym, exchangeLabel, 72, 10),
+    getStockFundamentals(sym, exchangeLabel),
   ]);
 
   const latest = analyses[0] ?? null;
@@ -426,6 +428,7 @@ export default async function TickerPage({
             data={prices}
             scanDates={snapshots.map((s) => s.fetched_at.slice(0, 10))}
             exchange={exchangeLabel}
+            symbol={sym}
           />
           {prices.length > 0 && (() => {
             const sorted = [...prices].sort((a, b) => a.date.localeCompare(b.date));
@@ -459,6 +462,14 @@ export default async function TickerPage({
           })()}
         </div>
       </div>
+
+      {/* ── Stock Fundamentals Snapshot ─────────────────────────────────── */}
+      {fundamentals && (
+        <StockSnapshot
+          data={fundamentals}
+          labels={labels}
+        />
+      )}
 
       {/* ── Agent Flow ─────────────────────────────────────────────────────── */}
       <div className="rounded-2xl border border-gray-100 bg-gray-50 px-8 py-5 space-y-3">

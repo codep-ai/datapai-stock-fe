@@ -1048,6 +1048,83 @@ export async function getAllWatchlistTickers(): Promise<WatchlistItem[]> {
   );
 }
 
+// ─── Intraday OHLCV ──────────────────────────────────────────────────────
+
+export interface IntradayBar {
+  ts: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export async function getIntradayBars(ticker: string, exchange: string, days: number = 1): Promise<IntradayBar[]> {
+  const suffixMap: Record<string, string> = { ASX: ".AX", HOSE: ".VN", HKEX: ".HK", SET: ".BK", KLSE: ".KL", IDX: ".JK" };
+  const candidates = [ticker];
+  const suffix = suffixMap[exchange];
+  if (suffix) candidates.push(ticker.replace(suffix, ""));
+
+  const placeholders = candidates.map((_, i) => `$${i + 1}`).join(",");
+  return q<IntradayBar>(
+    `SELECT ts::text, open, high, low, close, volume
+     FROM datapai.ohlcv_intraday
+     WHERE ticker IN (${placeholders})
+       AND exchange = $${candidates.length + 1}
+       AND ts >= NOW() - make_interval(days => $${candidates.length + 2})
+     ORDER BY ts ASC`,
+    [...candidates, exchange, days]
+  );
+}
+
+// ─── Stock Fundamentals Snapshot ──────────────────────────────────────────
+
+export interface StockFundamentals {
+  ticker: string;
+  exchange: string;
+  market_cap: number | null;
+  pe_ttm: number | null;
+  pe_forward: number | null;
+  pb_ratio: number | null;
+  ps_ratio: number | null;
+  beta: number | null;
+  dividend_yield: number | null;
+  dividend_rate: number | null;
+  fifty_two_week_high: number | null;
+  fifty_two_week_low: number | null;
+  shares_outstanding: number | null;
+  float_shares: number | null;
+  avg_volume_10d: number | null;
+  sector: string | null;
+  industry: string | null;
+  currency: string | null;
+  profit_margin: number | null;
+  return_on_equity: number | null;
+  debt_to_equity: number | null;
+  revenue_ttm: number | null;
+  net_income_ttm: number | null;
+  earnings_growth: number | null;
+  revenue_growth: number | null;
+  current_ratio: number | null;
+  updated_at: string | null;
+}
+
+export async function getStockFundamentals(ticker: string, exchange: string): Promise<StockFundamentals | null> {
+  const suffixMap: Record<string, string> = { ASX: ".AX", HOSE: ".VN", HKEX: ".HK", SET: ".BK", KLSE: ".KL", IDX: ".JK" };
+  const candidates = [ticker];
+  const suffix = suffixMap[exchange];
+  if (suffix) candidates.push(ticker.replace(suffix, ""));
+
+  const placeholders = candidates.map((_, i) => `$${i + 1}`).join(",");
+  const rows = await q<StockFundamentals>(
+    `SELECT * FROM datapai.stock_fundamentals
+     WHERE ticker IN (${placeholders}) AND exchange = $${candidates.length + 1}
+     LIMIT 1`,
+    [...candidates, exchange]
+  );
+  return rows[0] ?? null;
+}
+
 // ─── Regional Pricing ─────────────────────────────────────────────────────
 
 export interface PricingTier {
