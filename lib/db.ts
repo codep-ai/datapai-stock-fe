@@ -169,6 +169,9 @@ export interface User {
   plan_status?: string;
   plan_expires_at?: string | null;
   trial_ends_at?: string | null;
+  // Added by migration 028 — Early Supporter badge
+  badge?: string | null;
+  badge_number?: number | null;
 }
 
 export interface SessionRow {
@@ -638,6 +641,18 @@ export async function getUserByEmail(email: string): Promise<User | null> {
 export async function getUserById(id: string): Promise<User | null> {
   const rows = await q<User>(`SELECT * FROM datapai.users WHERE id=$1`, [id]);
   return rows[0] ?? null;
+}
+
+export async function getUserCount(): Promise<number> {
+  const rows = await q<{ cnt: string }>(`SELECT COUNT(*)::text AS cnt FROM datapai.users`);
+  return parseInt(rows[0]?.cnt ?? "0");
+}
+
+export async function assignEarlySupporterBadge(userId: string, badgeNumber: number): Promise<void> {
+  await exec(
+    `UPDATE datapai.users SET badge = 'early_supporter', badge_number = $2 WHERE id = $1`,
+    [userId, badgeNumber]
+  );
 }
 
 export async function createSession(token: string, userId: string, expiresAt: string): Promise<void> {

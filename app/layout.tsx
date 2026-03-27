@@ -4,12 +4,14 @@ import Image from "next/image";
 import "./globals.css";
 import { getAuthUser } from "@/lib/auth";
 import { getLang } from "@/lib/getLang";
+import { getUserById } from "@/lib/db";
 import { loadTranslations, loadLanguages } from "@/lib/i18n";
 import { t, HTML_LANG } from "@/lib/translations";
 import { getInvestorProfile } from "@/lib/investorProfile";
 import LogoutButton from "./components/LogoutButton";
 import LangToggle from "./components/LangToggle";
 import ProfileBadge from "./components/ProfileBadge";
+import EarlySupporterBadge from "./components/EarlySupporterBadge";
 import OnboardingBanner from "./components/OnboardingBanner";
 import GlobalCopilot from "./components/GlobalCopilot";
 
@@ -36,10 +38,11 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const [user, lang] = await Promise.all([getAuthUser(), getLang()]);
-  const [labels, languages, investorProfile] = await Promise.all([
+  const [labels, languages, investorProfile, dbUser] = await Promise.all([
     loadTranslations(lang),
     loadLanguages(),
     user ? getInvestorProfile(user.userId).catch(() => null) : Promise.resolve(null),
+    user ? getUserById(user.userId).catch(() => null) : Promise.resolve(null),
   ]);
 
   return (
@@ -116,6 +119,14 @@ export default async function RootLayout({
 
               {user ? (
                 <>
+                  {/* Early Supporter badge */}
+                  {dbUser?.badge === "early_supporter" && dbUser.badge_number != null && (
+                    <EarlySupporterBadge
+                      badgeNumber={dbUser.badge_number}
+                      label={(t(labels, "badge_early_supporter_hash") || "Early Supporter #{n}").replace("{n}", String(dbUser.badge_number))}
+                      description={t(labels, "badge_early_supporter_desc") || undefined}
+                    />
+                  )}
                   {/* Profile badge — shows risk level, links to /profile */}
                   <ProfileBadge
                     riskTolerance={investorProfile?.risk_tolerance ?? null}

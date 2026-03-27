@@ -5,7 +5,7 @@
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getWatchlist, getAlertSummaryMap, getLatestPricesForWatchlist, getMaterialEventsForTickers, getStockSynthesisFlexible, lookupStock, type StockSynthesis } from "@/lib/db";
+import { getWatchlist, getAlertSummaryMap, getLatestPricesForWatchlist, getMaterialEventsForTickers, getStockSynthesisFlexible, lookupStock, getUserById, type StockSynthesis } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
 import { getLang } from "@/lib/getLang";
 import { loadTranslations } from "@/lib/i18n";
@@ -13,6 +13,7 @@ import { t } from "@/lib/translations";
 import LiveScanProgress from "../components/LiveScanProgress";
 import TickerSearch from "../components/TickerSearch";
 import WatchlistButton from "../components/WatchlistButton";
+import EarlySupporterBadge from "../components/EarlySupporterBadge";
 import { BreakingNewsBadge } from "../components/BreakingNewsAlert";
 import StockViewToggle from "../components/StockViewToggle";
 
@@ -34,6 +35,7 @@ export default async function WatchlistPage() {
   }
   const lang = await getLang();
   const labels = await loadTranslations(lang);
+  const dbUser = await getUserById(user.userId).catch(() => null);
 
   const rawItems = await getWatchlist(user.userId);
   // Look up localized names from stock_directory
@@ -76,7 +78,16 @@ export default async function WatchlistPage() {
         }}
       >
         <div className="max-w-6xl mx-auto px-6 space-y-3">
-          <h1 className="text-2xl font-bold text-white">⭐ {t(labels, "watchlist_title")}</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-2xl font-bold text-white">⭐ {t(labels, "watchlist_title")}</h1>
+            {dbUser?.badge === "early_supporter" && dbUser.badge_number != null && (
+              <EarlySupporterBadge
+                badgeNumber={dbUser.badge_number}
+                label={(t(labels, "badge_early_supporter_hash") || "Early Supporter #{n}").replace("{n}", String(dbUser.badge_number))}
+                description={t(labels, "badge_early_supporter_desc") || undefined}
+              />
+            )}
+          </div>
           <p className="text-white/80 text-sm font-medium">
             {t(labels, "hero_spot_shifts")} —{" "}
             <span className="text-white font-bold">{t(labels, "hero_stocks_covered")}</span>{" "}

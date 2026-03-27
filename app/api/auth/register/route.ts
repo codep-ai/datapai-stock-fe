@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getUserByEmail, createUser, createSession } from "@/lib/db";
+import { getUserByEmail, createUser, createSession, getUserCount, assignEarlySupporterBadge } from "@/lib/db";
 import {
   hashPassword,
   generateSessionToken,
@@ -12,14 +12,37 @@ import {
 
 export const dynamic = "force-dynamic";
 
+const EARLY_SUPPORTER_LIMIT = 1000;
+
+/**
+ * Fire-and-forget welcome email via the backend script.
+ * Runs in a background fetch so registration is never blocked.
+ */
+async function triggerWelcomeEmail(email: string, badgeNumber: number, lang: string = "en") {
+  try {
+    const backendUrl = process.env.DATAPAI_BACKEND_URL ?? "http://localhost:8000";
+    await fetch(`${backendUrl}/api/send-welcome-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, badge_number: badgeNumber, lang }),
+    }).catch(() => {
+      // Silently fail — email is non-critical
+    });
+  } catch {
+    // Silently fail — email is non-critical
+  }
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({})) as {
     email?: string;
     password?: string;
+    lang?: string;
   };
 
   const email = (body.email ?? "").trim().toLowerCase();
   const password = body.password ?? "";
+  const lang = body.lang ?? "en";
 
   // Validate
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -52,6 +75,21 @@ export async function POST(req: NextRequest) {
   const passwordHash = hashPassword(password);
   await createUser(userId, email, passwordHash);
 
+  // Assign Early Supporter badge if within limit
+  let badgeNumber: number | null = null;
+  try {
+    const totalUsers = await getUserCount();
+    if (totalUsers <= EARLY_SUPPORTER_LIMIT) {
+      badgeNumber = totalUsers;
+      await assignEarlySupporterBadge(userId, badgeNumber);
+      // Trigger welcome email in background (non-blocking)
+      triggerWelcomeEmail(email, badgeNumber, lang);
+    }
+  } catch (e) {
+    // Badge assignment is non-critical — don't fail registration
+    console.error("Badge assignment error:", e);
+  }
+
   // Create session
   const token = generateSessionToken();
   await createSession(token, userId, sessionExpiresAt());
@@ -60,5 +98,5 @@ export async function POST(req: NextRequest) {
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, token, sessionCookieOptions());
 
-  return NextResponse.json({ success: true, email }, { status: 201 });
+  return NextResponse.json({ success: true, email, badge_number: badgeNumber }, { status: 201 });
 }
