@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { pool } from "@/lib/db";
+import { getPool } from "@/lib/db";
 
 const AGENT_BASE = (process.env.AGENT_BACKEND_BASE_URL ?? "").replace(/\/$/, "");
 
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     if (rows.length > 0) {
       const tickers = rows.map((r: any) => r.ticker ?? r.symbol).filter(Boolean);
       if (tickers.length > 0) {
-        const priceRes = await pool.query(`
+        const priceRes = await getPool().query(`
           SELECT DISTINCT ON (ticker) ticker, close AS price,
             CASE WHEN prev.close > 0 THEN ROUND(((p.close - prev.close) / prev.close * 100)::numeric, 2) ELSE NULL END AS change_1d_pct
           FROM datapai.prices p
