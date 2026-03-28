@@ -16,6 +16,7 @@ import WatchlistButton from "../components/WatchlistButton";
 import EarlySupporterBadge from "../components/EarlySupporterBadge";
 import { BreakingNewsBadge } from "../components/BreakingNewsAlert";
 import StockViewToggle from "../components/StockViewToggle";
+import ConvertedPrice from "../components/ConvertedPrice";
 
 export const dynamic = "force-dynamic";
 
@@ -370,6 +371,7 @@ export default async function WatchlistPage() {
                           {price && closeNum !== null && !isNaN(closeNum) ? (
                             <>
                               <div className="text-sm font-semibold text-gray-700">{isAsx ? "A$" : "$"}{closeNum.toFixed(2)}</div>
+                              <ConvertedPrice price={closeNum} exchange={item.exchange ?? "US"} />
                               <div className="text-xs font-medium" style={{ color: isUp ? "#16a34a" : "#dc2626" }}>
                                 {changePct !== null && !isNaN(changePct) ? `${isUp ? "+" : ""}${changePct.toFixed(2)}%` : ""}
                               </div>
@@ -457,7 +459,10 @@ export default async function WatchlistPage() {
                               </span>
                             </td>
                             <td className="px-4 py-3 text-right font-semibold text-gray-700">
-                              {closeNum !== null && !isNaN(closeNum) ? `${isAsx ? "A$" : "$"}${closeNum.toFixed(2)}` : "—"}
+                              <div>{closeNum !== null && !isNaN(closeNum) ? `${isAsx ? "A$" : "$"}${closeNum.toFixed(2)}` : "—"}</div>
+                              {closeNum !== null && !isNaN(closeNum) && (
+                                <ConvertedPrice price={closeNum} exchange={item.exchange ?? "US"} />
+                              )}
                             </td>
                             <td className="px-4 py-3 text-right font-semibold" style={{ color: isUp ? "#16a34a" : "#dc2626" }}>
                               {changePct !== null && !isNaN(changePct) ? `${isUp ? "+" : ""}${changePct.toFixed(2)}%` : "—"}

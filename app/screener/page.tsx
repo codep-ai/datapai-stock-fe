@@ -11,6 +11,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import WatchlistButton from "@/app/components/WatchlistButton";
+import ConvertedPrice from "@/app/components/ConvertedPrice";
 
 // ── i18n helpers ─────────────────────────────────────────────────────────────
 
@@ -812,7 +813,10 @@ function TechnicalTab({ labels }: { labels: Labels }) {
                         </Link>
                       </td>
                       <td className="px-2 py-2 text-right font-semibold tabular-nums text-gray-700">
-                        {r.latest_close !== null ? (r.latest_close < 1 ? r.latest_close.toFixed(4) : r.latest_close.toFixed(2)) : "—"}
+                        <div>{r.latest_close !== null ? (r.latest_close < 1 ? r.latest_close.toFixed(4) : r.latest_close.toFixed(2)) : "—"}</div>
+                        {r.latest_close !== null && (
+                          <ConvertedPrice price={r.latest_close} exchange={r.exchange} />
+                        )}
                       </td>
                       {/* Composite signals (right after price) */}
                       <td className="px-1 py-2 text-center"><SignalCell signal={signalDays(r)} labels={labels} /></td>

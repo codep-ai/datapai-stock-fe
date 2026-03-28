@@ -15,6 +15,7 @@ import WatchlistButton from "../../components/WatchlistButton";
 import TechAnalyticsPanel from "../../components/TechAnalyticsPanel";
 import StockSnapshot from "../../components/StockSnapshot";
 import ReportExportButton from "../../components/ReportExport";
+import ConvertedPrice from "../../components/ConvertedPrice";
 
 export const dynamic = "force-dynamic";
 
@@ -446,23 +447,34 @@ export default async function TickerPage({
             const last5 = sorted.slice(-5);
             const low5  = Math.min(...last5.map((p) => p.close));
             const high5 = Math.max(...last5.map((p) => p.close));
-            const cp = exchangeLabel === "ASX" ? "A$" : "$";
+            const cpMap: Record<string, string> = { ASX: "A$", HKEX: "HK$", HOSE: "₫", SET: "฿", KLSE: "RM", IDX: "Rp", SSE: "¥", SZSE: "¥", LSE: "p" };
+            const cp = cpMap[exchangeLabel] ?? "$";
+            const ccMap: Record<string, string> = { ASX: "AUD", HKEX: "HKD", HOSE: "VND", SET: "THB", KLSE: "MYR", IDX: "IDR", SSE: "CNY", SZSE: "CNY", LSE: "GBX" };
+            const cc = ccMap[exchangeLabel] ?? "USD";
+            const noDecimal = ["VND", "IDR"].includes(cc);
+            const fmt = (v: number) => noDecimal ? `${cp}${Math.round(v).toLocaleString()}` : `${cp}${v.toFixed(2)}`;
             return (
               <div className="mt-6 grid grid-cols-3 gap-6">
                 {[
-                  { label: t(labels, "ticker_last_close"), value: `${cp}${last.close.toFixed(2)}`, color: "#252525" },
+                  { label: t(labels, "ticker_last_close"), value: fmt(last.close), color: "#252525", showConverted: true },
                   {
                     label: t(labels, "ticker_1d_change"),
                     value: oneDayChange != null
                       ? (oneDayChange >= 0 ? "+" : "") + oneDayChange.toFixed(2) + "%"
                       : "—",
                     color: oneDayChange == null ? "#9ca3af" : oneDayChange >= 0 ? "#2e8b57" : "#dc2626",
+                    showConverted: false,
                   },
-                  { label: t(labels, "ticker_5d_range"), value: `${cp}${low5.toFixed(2)} – ${cp}${high5.toFixed(2)}`, color: "#252525" },
-                ].map(({ label, value, color }) => (
+                  { label: t(labels, "ticker_5d_range"), value: `${fmt(low5)} – ${fmt(high5)}`, color: "#252525", showConverted: false },
+                ].map(({ label, value, color, showConverted }) => (
                   <div key={label} className="bg-gray-50 rounded-xl p-5 text-center border border-gray-100">
                     <div className="text-gray-400 text-sm mb-2">{label}</div>
                     <div className="text-2xl font-bold" style={{ color }}>{value}</div>
+                    {showConverted && (
+                      <div className="mt-1">
+                        <ConvertedPrice price={last.close} exchange={exchangeLabel} />
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
