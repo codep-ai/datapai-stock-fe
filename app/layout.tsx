@@ -69,7 +69,7 @@ export default async function RootLayout({
             {/* Centre: page nav */}
             <nav className="flex items-center gap-0.5 flex-1 justify-center">
               <MarketDropdown
-                buttonLabel={t(labels, "nav_markets")}
+                buttonLabel={t(labels, "nav_exchanges")}
                 markets={[
                   { href: "/", label: t(labels, "nav_usStocks"), flag: "🇺🇸" },
                   { href: "/asx", label: t(labels, "nav_asx"), flag: "🇦🇺" },
@@ -93,7 +93,7 @@ export default async function RootLayout({
               <a href="/performance" className="text-gray-500 hover:text-[#6366f1] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
                 style={{ fontSize: "0.92rem" }}>{t(labels, "nav_performance")}</a>
               <a href="/indexes" className="text-gray-500 hover:text-[#2e8b57] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
-                style={{ fontSize: "0.92rem" }}>{t(labels, "nav_indexes")}</a>
+                style={{ fontSize: "0.92rem" }}>{t(labels, "nav_markets")}</a>
               <a href="/portfolio" className="text-gray-500 hover:text-[#6366f1] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
                 style={{ fontSize: "0.92rem" }}>{t(labels, "nav_portfolio")}</a>
               <a href="/pricing" className="text-gray-500 hover:text-[#2e8b57] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
