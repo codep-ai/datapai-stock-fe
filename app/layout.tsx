@@ -81,6 +81,8 @@ export default async function RootLayout({
                 style={{ fontSize: "0.92rem" }}>{t(labels, "nav_malaysia")}</a>
               <a href="/indonesia" className="text-gray-500 hover:text-[#e53935] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
                 style={{ fontSize: "0.92rem" }}>{t(labels, "nav_indonesia")}</a>
+              <a href="/china" className="text-gray-500 hover:text-[#dc2626] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
+                style={{ fontSize: "0.92rem" }}>{t(labels, "nav_china")}</a>
               <a href="/alerts" className="text-gray-500 hover:text-[#2e8b57] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
                 style={{ fontSize: "0.92rem" }}>{t(labels, "nav_alerts")}</a>
               <a href="/watchlist" className="text-gray-500 hover:text-[#2e8b57] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
@@ -93,6 +95,10 @@ export default async function RootLayout({
                 style={{ fontSize: "0.92rem" }}>{t(labels, "nav_studio")}</a>
               <a href="/indexes" className="text-gray-500 hover:text-[#2e8b57] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
                 style={{ fontSize: "0.92rem" }}>{t(labels, "nav_indexes")}</a>
+              <a href="/performance" className="text-gray-500 hover:text-[#6366f1] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
+                style={{ fontSize: "0.92rem" }}>{t(labels, "nav_performance")}</a>
+              <a href="/portfolio" className="text-gray-500 hover:text-[#6366f1] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
+                style={{ fontSize: "0.92rem" }}>{t(labels, "nav_portfolio")}</a>
               <a href="/pricing" className="text-gray-500 hover:text-[#2e8b57] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
                 style={{ fontSize: "0.92rem" }}>{t(labels, "nav_pricing")}</a>
             </nav>

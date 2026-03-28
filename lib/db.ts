@@ -1041,7 +1041,7 @@ export async function getStockSynthesisFlexible(symbol: string, exchange: string
   if (result) return result;
   // Try with exchange-specific yfinance suffix
   const suffixMap: Record<string, string> = {
-    ASX: ".AX", HOSE: ".VN", HKEX: ".HK", SET: ".BK", KLSE: ".KL", IDX: ".JK",
+    ASX: ".AX", HOSE: ".VN", HKEX: ".HK", SET: ".BK", KLSE: ".KL", IDX: ".JK", SSE: ".SS", SZSE: ".SZ",
   };
   const suffix = suffixMap[exchange];
   if (suffix) {
