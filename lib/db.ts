@@ -601,10 +601,22 @@ export async function getActiveStocks(exchange: string, lang = "en", limit = 50,
             COALESCE(sd.name, tu.company_name, tu.ticker) AS name,
             tu.exchange,
             COALESCE(sd.sector, tu.sector) AS sector,
-            tu.yf_symbol
+            tu.yf_symbol,
+            p.close AS price,
+            CASE WHEN prev.close > 0 THEN ROUND(((p.close - prev.close) / prev.close * 100)::numeric, 2) ELSE NULL END AS change_1d_pct
      FROM datapai.ticker_universe tu
      LEFT JOIN datapai.stock_directory sd
        ON sd.symbol = tu.ticker AND sd.exchange = tu.exchange AND sd.lang = $2
+     LEFT JOIN LATERAL (
+       SELECT close, trade_date FROM datapai.prices
+       WHERE ticker = tu.ticker AND exchange = tu.exchange
+       ORDER BY trade_date DESC LIMIT 1
+     ) p ON true
+     LEFT JOIN LATERAL (
+       SELECT close FROM datapai.prices
+       WHERE ticker = tu.ticker AND exchange = tu.exchange AND trade_date < p.trade_date
+       ORDER BY trade_date DESC LIMIT 1
+     ) prev ON true
      WHERE tu.exchange = $1 AND tu.is_active = TRUE ${featuredClause}
      ORDER BY tu.is_featured DESC, tu.featured_order ASC, tu.ticker
      LIMIT $3`,
