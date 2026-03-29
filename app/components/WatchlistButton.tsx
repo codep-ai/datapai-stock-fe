@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useWatchlist } from "./WatchlistContext";
 
 interface WatchlistButtonProps {
   symbol: string;
@@ -13,47 +14,19 @@ interface WatchlistButtonProps {
   addLabel?: string;
 }
 
-type AuthState = "loading" | "unauthenticated" | "authenticated";
-
 export default function WatchlistButton({ symbol, exchange = "US", name, compact, loginLabel, watchLabel, watchingLabel, addLabel }: WatchlistButtonProps) {
-  const [authState, setAuthState] = useState<AuthState>("loading");
-  const [inWatchlist, setInWatchlist] = useState(false);
+  const { authState, isWatched, add, remove } = useWatchlist();
+  const inWatchlist = isWatched(symbol);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/watchlist")
-      .then((r) => {
-        if (r.status === 401) {
-          setAuthState("unauthenticated");
-          return null;
-        }
-        return r.json();
-      })
-      .then((data) => {
-        if (!data) return;
-        setAuthState("authenticated");
-        const items: { symbol: string }[] = data.items ?? [];
-        setInWatchlist(items.some((i) => i.symbol === symbol));
-      })
-      .catch(() => setAuthState("unauthenticated"));
-  }, [symbol]);
 
   async function toggle() {
     if (authState !== "authenticated") return;
     setLoading(true);
     try {
       if (inWatchlist) {
-        const res = await fetch(`/api/watchlist/${symbol}`, { method: "DELETE" });
-        if (res.status === 401) { window.location.href = "/login"; return; }
-        setInWatchlist(false);
+        await remove(symbol);
       } else {
-        const res = await fetch("/api/watchlist", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ symbol, exchange, name }),
-        });
-        if (res.status === 401) { window.location.href = "/login"; return; }
-        setInWatchlist(true);
+        await add(symbol, exchange, name);
       }
     } catch (err) {
       console.error("Watchlist toggle error:", err);
@@ -66,7 +39,7 @@ export default function WatchlistButton({ symbol, exchange = "US", name, compact
   if (compact) {
     if (authState === "loading") {
       return (
-        <span className="flex items-center justify-center w-7 h-7 text-base text-gray-300 select-none" title="Loading…">
+        <span className="flex items-center justify-center w-7 h-7 text-base text-gray-300 select-none" title="Loading...">
           ☆
         </span>
       );
@@ -97,7 +70,7 @@ export default function WatchlistButton({ symbol, exchange = "US", name, compact
 
   // ── Full mode ────────────────────────────────────────────────────────────
 
-  // Not logged in → prompt to login
+  // Not logged in
   if (authState === "unauthenticated") {
     return (
       <a

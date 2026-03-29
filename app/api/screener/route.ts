@@ -1,6 +1,8 @@
 /**
  * GET /api/screener?exchange=US&signal=BUY&sector=Technology&min_score=0.2&limit=50
  * Proxy to Python backend: GET /agent/fundamental-screener
+ *
+ * Price data comes from the Python backend (screener_metrics) — no extra DB query needed.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -14,7 +16,6 @@ export async function GET(req: NextRequest) {
   }
 
   const qs = req.nextUrl.searchParams.toString();
-  const exchange = req.nextUrl.searchParams.get("exchange") ?? "US";
 
   try {
     const res = await fetch(
@@ -30,21 +31,15 @@ export async function GET(req: NextRequest) {
         ? json.data.items
         : [];
 
-    // Enrich with latest prices
+    // Enrich with latest prices from screener_metrics (instant, no LATERAL JOIN)
     if (rows.length > 0) {
       const tickers = rows.map((r: any) => r.ticker ?? r.symbol).filter(Boolean);
       if (tickers.length > 0) {
+        const exchange = req.nextUrl.searchParams.get("exchange") ?? "US";
         const priceRes = await getPool().query(`
-          SELECT DISTINCT ON (ticker) ticker, close AS price,
-            CASE WHEN prev.close > 0 THEN ROUND(((p.close - prev.close) / prev.close * 100)::numeric, 2) ELSE NULL END AS change_1d_pct
-          FROM datapai.prices p
-          LEFT JOIN LATERAL (
-            SELECT close FROM datapai.prices
-            WHERE ticker = p.ticker AND exchange = p.exchange AND trade_date < p.trade_date
-            ORDER BY trade_date DESC LIMIT 1
-          ) prev ON true
-          WHERE p.ticker = ANY($1) AND p.exchange = $2
-          ORDER BY ticker, p.trade_date DESC
+          SELECT ticker, latest_close AS price, change_1d_pct
+          FROM datapai.screener_metrics
+          WHERE ticker = ANY($1) AND exchange = $2
         `, [tickers, exchange]);
 
         const priceMap: Record<string, { price: number; change_1d_pct: number | null }> = {};

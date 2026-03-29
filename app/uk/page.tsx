@@ -30,7 +30,7 @@ export default async function UkPage() {
       <div
         className="w-full flex flex-col justify-center"
         style={{
-          background: "linear-gradient(135deg, #00247d 0%, #1a3a8a 50%, #cf142b 100%)",
+          background: "linear-gradient(45deg, seagreen, darkseagreen)",
           paddingTop: "28px",
           paddingBottom: "28px",
         }}

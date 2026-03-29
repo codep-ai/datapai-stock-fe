@@ -582,9 +582,9 @@ export async function getLocalizedNames(symbols: string[], exchange: string, lan
 }
 
 /**
- * Load active stocks from DB for a given exchange + language.
- * Replaces hardcoded UNIVERSE / ASX_UNIVERSE / VN_UNIVERSE arrays.
- * Joins ticker_universe (for active/yf_symbol) with stock_directory (for localized name).
+ * Load demo stocks for an exchange landing page.
+ * Reads from market_demo_stocks (tiny: ~20 rows per market, pre-computed prices).
+ * Falls back to ticker_universe + screener_metrics if market_demo_stocks is empty.
  */
 export interface ActiveStock {
   symbol: string;
@@ -595,30 +595,27 @@ export interface ActiveStock {
 }
 
 export async function getActiveStocks(exchange: string, lang = "en", limit = 50, featuredOnly = false): Promise<ActiveStock[]> {
-  const featuredClause = featuredOnly ? "AND tu.is_featured = TRUE" : "";
+  // Intraday price (live) takes priority over market_demo_stocks price (EOD)
   return q<ActiveStock>(
-    `SELECT tu.ticker AS symbol,
-            COALESCE(sd.name, tu.company_name, tu.ticker) AS name,
-            tu.exchange,
-            COALESCE(sd.sector, tu.sector) AS sector,
-            tu.yf_symbol,
-            p.close AS price,
-            CASE WHEN prev.close > 0 THEN ROUND(((p.close - prev.close) / prev.close * 100)::numeric, 2) ELSE NULL END AS change_1d_pct
-     FROM datapai.ticker_universe tu
+    `SELECT d.ticker AS symbol,
+            COALESCE(sd.name, d.company_name, d.ticker) AS name,
+            d.exchange,
+            COALESCE(sd.sector, d.sector) AS sector,
+            COALESCE(tu.yf_symbol, d.ticker) AS yf_symbol,
+            COALESCE(live.close, d.price) AS price,
+            COALESCE(d.change_1d_pct) AS change_1d_pct
+     FROM datapai.market_demo_stocks d
      LEFT JOIN datapai.stock_directory sd
-       ON sd.symbol = tu.ticker AND sd.exchange = tu.exchange AND sd.lang = $2
+       ON sd.symbol = d.ticker AND sd.exchange = d.exchange AND sd.lang = $2
+     LEFT JOIN datapai.ticker_universe tu
+       ON tu.ticker = d.ticker AND tu.exchange = d.exchange
      LEFT JOIN LATERAL (
-       SELECT close, trade_date FROM datapai.prices
-       WHERE (ticker = tu.ticker OR ticker = tu.yf_symbol) AND exchange = tu.exchange
-       ORDER BY trade_date DESC LIMIT 1
-     ) p ON true
-     LEFT JOIN LATERAL (
-       SELECT close FROM datapai.prices
-       WHERE (ticker = tu.ticker OR ticker = tu.yf_symbol) AND exchange = tu.exchange AND trade_date < p.trade_date
-       ORDER BY trade_date DESC LIMIT 1
-     ) prev ON true
-     WHERE tu.exchange = $1 AND tu.is_active = TRUE ${featuredClause}
-     ORDER BY tu.is_featured DESC, tu.featured_order ASC, tu.ticker
+       SELECT close FROM datapai.ohlcv_intraday
+       WHERE ticker = d.ticker AND exchange = d.exchange
+       ORDER BY ts DESC LIMIT 1
+     ) live ON true
+     WHERE d.exchange = $1
+     ORDER BY d.display_order ASC, d.ticker
      LIMIT $3`,
     [exchange, lang, limit]
   );
@@ -785,47 +782,19 @@ export async function getLatestPricesForWatchlist(
   items: { symbol: string; exchange: string }[]
 ): Promise<Record<string, TickerPrice>> {
   if (!items.length) return {};
-  // Build lookup tickers: ASX stocks use SYMBOL.AX in prices table
-  const allTickers: string[] = [];
-  const symbolToTickers: Record<string, string[]> = {};
-  for (const item of items) {
-    const candidates: string[] = [item.symbol];
-    if (item.exchange === "ASX") candidates.push(`${item.symbol}.AX`);
-    if (item.exchange === "HOSE") candidates.push(`${item.symbol}.VN`);
-    if (item.exchange === "HKEX") candidates.push(`${item.symbol}.HK`);
-    if (item.exchange === "SET") candidates.push(`${item.symbol}.BK`);
-    if (item.exchange === "KLSE") candidates.push(`${item.symbol}.KL`);
-    if (item.exchange === "IDX") candidates.push(`${item.symbol}.JK`);
-    if (item.exchange === "LSE") candidates.push(`${item.symbol}.L`);
-    symbolToTickers[item.symbol] = candidates;
-    allTickers.push(...candidates);
-  }
-  const unique = [...new Set(allTickers)];
-  const placeholders = unique.map((_, i) => `$${i + 1}`).join(",");
+  const symbols = items.map(i => i.symbol);
+  // Intraday only — refreshed every 5-30min by intraday DAG, kept for 3 days
   const rows = await q<TickerPrice>(
-    `SELECT p1.ticker, p1.close, p2.close AS prev_close,
-            ROUND(((p1.close - p2.close) / NULLIF(p2.close, 0) * 100)::numeric, 2) AS change_pct,
-            p1.trade_date::text AS trade_date
-     FROM datapai.prices p1
-     JOIN LATERAL (
-       SELECT close FROM datapai.prices p2
-       WHERE p2.ticker = p1.ticker AND p2.trade_date < p1.trade_date
-       ORDER BY p2.trade_date DESC LIMIT 1
-     ) p2 ON true
-     WHERE p1.ticker IN (${placeholders})
-       AND p1.trade_date = (SELECT MAX(trade_date) FROM datapai.prices WHERE ticker = p1.ticker)`,
-    unique
+    `SELECT DISTINCT ON (ticker)
+            ticker, close, 0::numeric AS prev_close,
+            0::numeric AS change_pct, ts::text AS trade_date
+     FROM datapai.ohlcv_intraday
+     WHERE ticker = ANY($1)
+     ORDER BY ticker, ts DESC`,
+    [symbols]
   );
-  // Map back to watchlist symbols (prefer .AX variant for freshest data)
-  const byTicker: Record<string, TickerPrice> = {};
-  for (const r of rows) byTicker[r.ticker] = r;
   const result: Record<string, TickerPrice> = {};
-  for (const item of items) {
-    const candidates = symbolToTickers[item.symbol] || [item.symbol];
-    for (const c of candidates.reverse()) { // prefer .AX
-      if (byTicker[c]) { result[item.symbol] = byTicker[c]; break; }
-    }
-  }
+  for (const r of rows) result[r.ticker] = r;
   return result;
 }
 
@@ -1092,21 +1061,16 @@ export interface IntradayBar {
   volume: number;
 }
 
-export async function getIntradayBars(ticker: string, exchange: string, days: number = 1): Promise<IntradayBar[]> {
-  const suffixMap: Record<string, string> = { ASX: ".AX", HOSE: ".VN", HKEX: ".HK", SET: ".BK", KLSE: ".KL", IDX: ".JK", SSE: ".SS", SZSE: ".SZ", LSE: ".L" };
-  const candidates = [ticker];
-  const suffix = suffixMap[exchange];
-  if (suffix) candidates.push(ticker.replace(suffix, ""));
-
-  const placeholders = candidates.map((_, i) => `$${i + 1}`).join(",");
+export async function getIntradayBars(ticker: string, exchange: string, days: number = 5): Promise<IntradayBar[]> {
+  // Live table only has latest day's bars (archived at market open).
+  // Use generous lookback to cover weekends (Fri bars visible until Mon open).
   return q<IntradayBar>(
     `SELECT ts::text, open, high, low, close, volume
      FROM datapai.ohlcv_intraday
-     WHERE ticker IN (${placeholders})
-       AND exchange = $${candidates.length + 1}
-       AND ts >= NOW() - make_interval(days => $${candidates.length + 2})
+     WHERE ticker = $1
+       AND exchange = $2
      ORDER BY ts ASC`,
-    [...candidates, exchange, days]
+    [ticker, exchange]
   );
 }
 

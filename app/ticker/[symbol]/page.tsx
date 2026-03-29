@@ -6,7 +6,7 @@ import { loadTranslations } from "@/lib/i18n";
 import { t } from "@/lib/translations";
 import { translateFields } from "@/lib/translate";
 import { BreakingNewsPanel } from "../../components/BreakingNewsAlert";
-import { fetchPrices } from "@/lib/price";
+import { fetchPrices, fetchIntradayPrices } from "@/lib/price";
 import PriceChart from "./PriceChart";
 import { agentSignalLabel, validationLabel, changeTypeLabel } from "@/lib/agent";
 import { resolveTickerUrl } from "@/lib/scan-pipeline";
@@ -270,11 +270,12 @@ export default async function TickerPage({
     }
   }
 
-  const [snapshots, analyses, diffs, prices, materialEvents, fundamentals] = await Promise.all([
+  const [snapshots, analyses, diffs, prices, intradayPrices, materialEvents, fundamentals] = await Promise.all([
     getTickerSnapshots(sym, 5),
     getTickerAnalyses(sym, 5),
     getTickerDiffs(sym, 5),
     fetchPrices(sym, 365, exchangeLabel),
+    fetchIntradayPrices(sym, exchangeLabel),
     getLatestMaterialEvents(sym, exchangeLabel, 72, 10),
     getStockFundamentals(sym, exchangeLabel),
   ]);

@@ -15,6 +15,7 @@ import EarlySupporterBadge from "./components/EarlySupporterBadge";
 import OnboardingBanner from "./components/OnboardingBanner";
 import MarketDropdown from "./components/MarketDropdown";
 import GlobalCopilot from "./components/GlobalCopilot";
+import { WatchlistProvider } from "./components/WatchlistContext";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -160,7 +161,9 @@ export default async function RootLayout({
           />
         )}
 
-        <main>{children}</main>
+        <WatchlistProvider>
+          <main>{children}</main>
+        </WatchlistProvider>
 
         {/* Global AI Copilot — floating chat on every page */}
         <GlobalCopilot lang={lang} />

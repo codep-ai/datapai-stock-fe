@@ -119,7 +119,7 @@ export default async function ChinaPage() {
       <div
         className="w-full flex flex-col justify-center"
         style={{
-          background: "linear-gradient(135deg, #991b1b 0%, #dc2626 40%, #b91c1c 100%)",
+          background: "linear-gradient(45deg, seagreen, darkseagreen)",
           paddingTop: "28px",
           paddingBottom: "28px",
         }}

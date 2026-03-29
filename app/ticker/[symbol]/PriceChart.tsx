@@ -1,18 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import {
-  ResponsiveContainer,
-  ComposedChart,
-  Area,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ReferenceLine,
-} from "recharts";
+// Recharts removed — all charts now use lightweight-charts CandlestickChart
 import type { PricePoint } from "@/lib/price";
+import dynamic from "next/dynamic";
+
+const CandlestickChart = dynamic(() => import("../../components/CandlestickChart"), { ssr: false });
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -27,13 +20,6 @@ interface IntradayPoint {
   volume: number;
 }
 
-interface ChartPoint {
-  label: string;
-  close: number;
-  volume: number;
-  // For volume coloring: green if close >= open/prev, red otherwise
-  volColor: string;
-}
 
 interface Props {
   data: PricePoint[];
@@ -50,12 +36,6 @@ const CURRENCY_MAP: Record<string, string> = {
   INDEX: "", US: "$",
 };
 
-function fmtVolume(v: number): string {
-  if (v >= 1e9) return `${(v / 1e9).toFixed(1)}B`;
-  if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
-  if (v >= 1e3) return `${(v / 1e3).toFixed(0)}K`;
-  return String(v);
-}
 
 // ── Period config ────────────────────────────────────────────────────────────
 
@@ -71,7 +51,7 @@ const PERIOD_DEFAULTS: Record<Period, { label: string; labelKey: string; days: n
 // ── Main Component ───────────────────────────────────────────────────────────
 
 export default function PriceChart({ data, scanDates = [], exchange = "US", symbol, labels = {} }: Props) {
-  const [period, setPeriod] = useState<Period>("1M");
+  const [period, setPeriod] = useState<Period>("1D");
   const [intradayData, setIntradayData] = useState<IntradayPoint[] | null>(null);
   const [loadingIntraday, setLoadingIntraday] = useState(false);
 
@@ -102,41 +82,19 @@ export default function PriceChart({ data, scanDates = [], exchange = "US", symb
     }
   }, [period, intradayData, fetchIntraday]);
 
-  // ── Build chart data based on period ───────────────────────────────────
+  // ── Build candlestick data based on period ─────────────────────────────
 
-  let chartData: ChartPoint[] = [];
-  let prevClose: number | null = null;
+  type CandleBar = { ts?: string; date?: string; open: number; high: number; low: number; close: number; volume: number };
+  let candleBars: CandleBar[] = [];
 
   if (period === "1D" && intradayData && intradayData.length > 0) {
-    // Intraday: use 15m bars
-    // Get today's data (or most recent trading day)
-    const dates = [...new Set(intradayData.map((d) => d.ts.slice(0, 10)))].sort();
-    const latestDate = dates[dates.length - 1];
-    const prevDate = dates.length > 1 ? dates[dates.length - 2] : null;
-
-    const todayBars = intradayData.filter((d) => d.ts.startsWith(latestDate));
-    if (prevDate) {
-      const prevBars = intradayData.filter((d) => d.ts.startsWith(prevDate));
-      if (prevBars.length > 0) prevClose = prevBars[prevBars.length - 1].close;
-    }
-
-    let prev = Number(todayBars[0]?.open ?? 0);
-    chartData = todayBars.map((d) => {
-      const c = Number(d.close);
-      const color = c >= prev ? "#10b981" : "#ef4444";
-      prev = c;
-      return {
-        label: d.ts.slice(11, 16), // HH:MM
-        close: c,
-        volume: Number(d.volume),
-        volColor: color,
-      };
-    });
-  } else {
-    // Daily data: filter by period
+    candleBars = intradayData.map((d) => ({
+      ts: d.ts, open: Number(d.open), high: Number(d.high),
+      low: Number(d.low), close: Number(d.close), volume: Number(d.volume),
+    }));
+  } else if (period !== "1D") {
     const sorted = [...data].sort((a, b) => a.date.localeCompare(b.date));
     let filtered = sorted;
-
     if (period === "YTD") {
       const yearStart = new Date().getFullYear() + "-01-01";
       filtered = sorted.filter((d) => d.date >= yearStart);
@@ -146,40 +104,18 @@ export default function PriceChart({ data, scanDates = [], exchange = "US", symb
         filtered = sorted.slice(-cfg.days);
       }
     }
-
-    let prev = Number(filtered[0]?.close ?? 0);
-    chartData = filtered.map((d) => {
-      const c = Number(d.close);
-      const color = c >= prev ? "#10b981" : "#ef4444";
-      prev = c;
-      return {
-        label: d.date.slice(5), // MM-DD
-        close: c,
-        volume: Number(d.volume),
-        volColor: color,
-      };
-    });
+    candleBars = filtered.map((d) => ({
+      date: d.date, open: Number(d.open), high: Number(d.high),
+      low: Number(d.low), close: Number(d.close), volume: Number(d.volume),
+    }));
   }
 
-  // Calculate change — coerce to numbers (DB may return strings)
-  const first = Number(chartData[0]?.close ?? 0);
-  const last = Number(chartData[chartData.length - 1]?.close ?? 0);
-  const basePrice = Number(prevClose ?? first);
-  const change = last - basePrice;
-  const changePct = basePrice > 0 ? (change / basePrice) * 100 : 0;
+  // Calculate change
+  const first = Number(candleBars[0]?.close ?? 0);
+  const last = Number(candleBars[candleBars.length - 1]?.close ?? 0);
+  const change = last - first;
+  const changePct = first > 0 ? (change / first) * 100 : 0;
   const isUp = change >= 0;
-  const lineColor = isUp ? "#10b981" : "#ef4444";
-  const fillColor = isUp ? "rgba(16, 185, 129, 0.08)" : "rgba(239, 68, 68, 0.08)";
-
-  // Price domain with padding
-  const closes = chartData.map((d) => d.close).filter(Boolean);
-  const minPrice = Math.min(...closes) * 0.998;
-  const maxPrice = Math.max(...closes) * 1.002;
-
-  // Tick interval
-  const tickInterval = period === "1D"
-    ? Math.max(1, Math.floor(chartData.length / 6))
-    : Math.max(1, Math.floor(chartData.length / 8));
 
   return (
     <div>
@@ -204,7 +140,7 @@ export default function PriceChart({ data, scanDates = [], exchange = "US", symb
           })}
         </div>
 
-        {chartData.length > 0 && (
+        {candleBars.length > 0 && (
           <div className="flex items-center gap-3">
             <span className="text-2xl font-bold text-gray-800">
               {cp}{last.toFixed(2)}
@@ -220,113 +156,15 @@ export default function PriceChart({ data, scanDates = [], exchange = "US", symb
 
       {/* ── Chart ── */}
       {period === "1D" && loadingIntraday ? (
-        <div className="h-[280px] flex items-center justify-center text-gray-400 text-sm">
+        <div className="h-[320px] flex items-center justify-center text-gray-400 text-sm">
           Loading intraday data...
         </div>
-      ) : period === "1D" && (!intradayData || intradayData.length === 0) ? (
-        <div className="h-[280px] flex items-center justify-center text-gray-400 text-sm">
-          No intraday data available yet
-        </div>
       ) : (
-        <div>
-          {/* Price chart */}
-          <ResponsiveContainer width="100%" height={220}>
-            <ComposedChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: 8 }}>
-              <defs>
-                <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={lineColor} stopOpacity={0.15} />
-                  <stop offset="100%" stopColor={lineColor} stopOpacity={0.01} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" vertical={false} />
-              <XAxis
-                dataKey="label"
-                tick={{ fill: "#9ca3af", fontSize: 10 }}
-                tickLine={false}
-                axisLine={{ stroke: "#e5e7eb" }}
-                interval={tickInterval}
-              />
-              <YAxis
-                domain={[minPrice, maxPrice]}
-                tick={{ fill: "#9ca3af", fontSize: 10 }}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(v) => `${cp}${Number(v).toFixed(2)}`}
-                width={65}
-              />
-              <Tooltip
-                contentStyle={{
-                  background: "#1a1a2e",
-                  border: "none",
-                  borderRadius: 8,
-                  color: "#fff",
-                  fontSize: 12,
-                  padding: "8px 12px",
-                }}
-                formatter={(val: number) => [`${cp}${val.toFixed(2)}`, "Price"]}
-                labelStyle={{ color: "#9ca3af" }}
-              />
-              {prevClose && (
-                <ReferenceLine
-                  y={prevClose}
-                  stroke="#9ca3af"
-                  strokeDasharray="3 3"
-                  strokeWidth={1}
-                />
-              )}
-              <Area
-                type="monotone"
-                dataKey="close"
-                stroke={lineColor}
-                strokeWidth={2}
-                fill="url(#priceGradient)"
-                dot={false}
-                activeDot={{ r: 4, fill: lineColor }}
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
-
-          {/* Volume chart */}
-          <ResponsiveContainer width="100%" height={60}>
-            <ComposedChart data={chartData} margin={{ top: 0, right: 8, bottom: 4, left: 8 }}>
-              <XAxis dataKey="label" hide />
-              <YAxis hide />
-              <Tooltip
-                contentStyle={{
-                  background: "#1a1a2e",
-                  border: "none",
-                  borderRadius: 8,
-                  color: "#fff",
-                  fontSize: 11,
-                }}
-                formatter={(val: number) => [fmtVolume(val), "Vol"]}
-                labelStyle={{ color: "#9ca3af" }}
-              />
-              <Bar
-                dataKey="volume"
-                fill="#10b981"
-                opacity={0.5}
-                radius={[1, 1, 0, 0]}
-                // Color each bar individually
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                shape={(props: any) => {
-                  const { x, y, width, height, payload } = props;
-                  return (
-                    <rect
-                      x={x}
-                      y={y}
-                      width={width}
-                      height={height}
-                      fill={payload.volColor}
-                      opacity={0.5}
-                      rx={1}
-                    />
-                  );
-                }}
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
+        <CandlestickChart
+          data={candleBars}
+          currency={cp}
+          height={320}
+        />
       )}
     </div>
   );
