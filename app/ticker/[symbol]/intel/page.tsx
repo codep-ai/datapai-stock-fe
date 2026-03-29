@@ -62,7 +62,7 @@ export default async function IntelPage({
     getTickerSnapshots(sym, 1),
     getLatestAnalysisWithAgentContent(sym),
     getCachedTaSignal(sym, 48),
-    fetchPrices(sym, 30, exchangeLabel === "ASX" ? "ASX" : undefined),
+    fetchPrices(sym, 30, exchangeLabel),
   ]);
   const latestSnap = snapshots[0] ?? null;
 
@@ -206,7 +206,7 @@ export default async function IntelPage({
                   </span>
                 )}
               </h2>
-              <PriceChart data={prices} scanDates={[]} exchange={exchangeLabel} />
+              <PriceChart data={prices} scanDates={[]} exchange={exchangeLabel} symbol={sym} />
             </div>
           )}
 
