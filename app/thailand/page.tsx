@@ -69,7 +69,7 @@ export default async function ThailandPage() {
             <Link
               href="/alerts"
               className="px-6 py-2.5 rounded-lg font-bold uppercase tracking-wide transition-all hover:-translate-y-0.5"
-              style={{ fontSize: "0.9rem", background: "#ffd600", color: "#2e8b57" }}
+              style={{ fontSize: "0.9rem", background: "#fff", color: "#2e8b57" }}
             >
               {t(labels, "hero_view_alerts")} →
             </Link>

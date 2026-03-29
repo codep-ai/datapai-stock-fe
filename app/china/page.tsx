@@ -63,12 +63,12 @@ export default async function ChinaPage() {
           const cardStyle = changePct !== null && !isNaN(changePct) && changePct < 0
             ? { background: "#fef2f2", border: "1.5px solid #fca5a5" }
             : changePct !== null && !isNaN(changePct) && changePct >= 0
-            ? { background: "#fff7ed", border: "1.5px solid #fdba74" }
+            ? { background: "#f0fdf4", border: "1.5px solid #86efac" }
             : { background: "#ffffff", border: "1px solid #e5e7eb" };
           return (
             <div key={tk.symbol} className="relative rounded-xl px-4 pt-6 pb-4 transition-all duration-200 group shadow-sm hover:-translate-y-0.5" style={cardStyle}>
               {hasAlert && (
-                <span className="absolute -top-2.5 -right-2.5 text-xs font-bold px-2 py-0.5 rounded-full shadow" style={{ background: "#dc2626", color: "#fff" }}>
+                <span className="absolute -top-2.5 -right-2.5 text-xs font-bold px-2 py-0.5 rounded-full shadow" style={{ background: "#2e8b57", color: "#fff" }}>
                   {analysis.alert_score > 0 ? "+" : ""}{analysis.alert_score.toFixed(1)}
                 </span>
               )}
@@ -76,13 +76,13 @@ export default async function ChinaPage() {
                 <WatchlistButton compact symbol={tk.symbol} exchange={exchange} name={tk.name} />
               </div>
               <Link href={`/ticker/${tk.symbol}?exchange=${exchange}`} className="block pr-6">
-                <div className="font-bold text-base group-hover:opacity-80" style={{ color: "#dc2626" }}>{tk.symbol}</div>
+                <div className="font-bold text-base group-hover:opacity-80" style={{ color: "#2e8b57" }}>{tk.symbol}</div>
                 <div className="text-gray-400 text-xs mt-0.5 truncate">{tk.name}</div>
                 <div className="mt-2 space-y-0.5">
                   {price && closeNum !== null && !isNaN(closeNum) ? (
                     <>
                       <div className="text-sm font-semibold text-gray-700">&yen;{fmtCNY(closeNum)}</div>
-                      <div className="text-xs font-medium" style={{ color: isUp ? "#dc2626" : "#16a34a" }}>
+                      <div className="text-xs font-medium" style={{ color: isUp ? "#16a34a" : "#dc2626" }}>
                         {changePct !== null && !isNaN(changePct) ? `${isUp ? "+" : ""}${changePct.toFixed(2)}%` : ""}
                       </div>
                       <div className="text-[10px] text-gray-300">{price.trade_date}</div>
@@ -150,7 +150,7 @@ export default async function ChinaPage() {
             <Link
               href="/alerts"
               className="px-6 py-2.5 rounded-lg font-bold uppercase tracking-wide transition-all hover:-translate-y-0.5"
-              style={{ fontSize: "0.9rem", background: "#fbbf24", color: "#991b1b" }}
+              style={{ fontSize: "0.9rem", background: "#fff", color: "#2e8b57" }}
             >
               {t(labels, "hero_view_alerts")} &rarr;
             </Link>

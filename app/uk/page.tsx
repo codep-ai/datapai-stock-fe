@@ -26,7 +26,7 @@ export default async function UkPage() {
 
   return (
     <div>
-      {/* Full-width hero — blue/red Union Jack theme */}
+      {/* Full-width hero */}
       <div
         className="w-full flex flex-col justify-center"
         style={{
@@ -57,7 +57,7 @@ export default async function UkPage() {
             <Link
               href="/alerts"
               className="px-6 py-2.5 rounded-lg font-bold uppercase tracking-wide transition-all hover:-translate-y-0.5"
-              style={{ fontSize: "0.9rem", background: "#cf142b", color: "#fff" }}
+              style={{ fontSize: "0.9rem", background: "#fff", color: "#2e8b57" }}
             >
               {t(labels, "hero_view_alerts")} →
             </Link>
@@ -74,13 +74,13 @@ export default async function UkPage() {
           <div className="flex items-center gap-4 text-sm text-gray-500 border border-gray-100 rounded-lg px-4 py-3 bg-white shadow-sm">
             <span
               className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-              style={{ background: lastRun.status === "SUCCESS" ? "#00247d" : lastRun.status === "RUNNING" ? "#FFD700" : "#ef4444" }}
+              style={{ background: lastRun.status === "SUCCESS" ? "#2e8b57" : lastRun.status === "RUNNING" ? "#FFD700" : "#ef4444" }}
             />
             <span>{t(labels, "last_scan_label")} <strong>{new Date(lastRun.started_at).toLocaleString()}</strong></span>
             <span className="text-gray-300">·</span>
             <span><strong>{lastRun.scanned_count}</strong> {t(labels, "scanned")}</span>
             <span className="text-gray-300">·</span>
-            <span style={{ color: "#00247d" }}><strong>{lseAlertCount}</strong> {t(labels, "tickers_with_data")}</span>
+            <span style={{ color: "#2e8b57" }}><strong>{lseAlertCount}</strong> {t(labels, "tickers_with_data")}</span>
             <Link href={`/run/${lastRun.id}`} className="ml-auto text-gray-400 hover:text-gray-700 underline underline-offset-2 text-xs">
               {t(labels, "view_run_detail")} →
             </Link>
@@ -95,7 +95,7 @@ export default async function UkPage() {
               <span className="text-lg font-normal text-gray-400 ml-2">{t(labels, "section_uk_market")}</span>
             </h2>
             <div className="flex items-center gap-4 text-sm text-gray-400">
-              <Link href="/alerts" className="hover:underline" style={{ color: "#00247d" }}>{t(labels, "hero_view_alerts")} →</Link>
+              <Link href="/alerts" className="hover:underline" style={{ color: "#2e8b57" }}>{t(labels, "hero_view_alerts")} →</Link>
             </div>
           </div>
 
@@ -125,7 +125,7 @@ export default async function UkPage() {
                   return (
                     <div key={tk.symbol} className="relative rounded-xl px-4 pt-6 pb-4 transition-all duration-200 group shadow-sm hover:-translate-y-0.5" style={cardStyle}>
                       {hasAlert && (
-                        <span className="absolute -top-2.5 -right-2.5 text-xs font-bold px-2 py-0.5 rounded-full shadow" style={{ background: "#00247d", color: "#fff" }}>
+                        <span className="absolute -top-2.5 -right-2.5 text-xs font-bold px-2 py-0.5 rounded-full shadow" style={{ background: "#2e8b57", color: "#fff" }}>
                           {analysis.alert_score > 0 ? "+" : ""}{analysis.alert_score.toFixed(1)}
                         </span>
                       )}
@@ -133,7 +133,7 @@ export default async function UkPage() {
                         <WatchlistButton compact symbol={tk.symbol} exchange="LSE" name={tk.name} />
                       </div>
                       <Link href={`/ticker/${tk.symbol}?exchange=${tk.exchange}`} className="block pr-6">
-                        <div className="font-bold text-base group-hover:opacity-80" style={{ color: "#00247d" }}>{tk.symbol}</div>
+                        <div className="font-bold text-base group-hover:opacity-80" style={{ color: "#2e8b57" }}>{tk.symbol}</div>
                         <div className="text-gray-400 text-xs mt-0.5 truncate">{tk.name}</div>
                         <div className="mt-2 space-y-0.5">
                           {price && closeNum !== null && !isNaN(closeNum) ? (
@@ -196,7 +196,7 @@ export default async function UkPage() {
                         <tr key={tk.symbol} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors" style={{ background: rowBg }}>
                           <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
                           <td className="px-4 py-3">
-                            <Link href={`/ticker/${tk.symbol}?exchange=${tk.exchange}`} className="font-bold hover:opacity-80" style={{ color: "#00247d" }}>{tk.symbol}</Link>
+                            <Link href={`/ticker/${tk.symbol}?exchange=${tk.exchange}`} className="font-bold hover:opacity-80" style={{ color: "#2e8b57" }}>{tk.symbol}</Link>
                           </td>
                           <td className="px-4 py-3 text-gray-500 truncate max-w-[200px]">{tk.name}</td>
                           <td className="px-4 py-3 text-right font-semibold text-gray-700">
@@ -240,7 +240,7 @@ export default async function UkPage() {
               { step: "4", label: t(labels, "step4_label"), desc: t(labels, "step4_desc") },
             ].map((item) => (
               <div key={item.step} className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-                <div className="font-bold text-3xl mb-3" style={{ color: "#00247d" }}>{item.step}</div>
+                <div className="font-bold text-3xl mb-3" style={{ color: "#2e8b57" }}>{item.step}</div>
                 <div className="text-[#252525] font-bold text-lg mb-2">{item.label}</div>
                 <div className="text-gray-500 text-base">{item.desc}</div>
               </div>
@@ -250,7 +250,7 @@ export default async function UkPage() {
 
         {/* UK-specific trust note */}
         <div className="border border-blue-200 rounded-2xl p-8 bg-white shadow-sm">
-          <h3 className="font-bold text-xl mb-4" style={{ color: "#00247d" }}>
+          <h3 className="font-bold text-xl mb-4" style={{ color: "#2e8b57" }}>
             {t(labels, "section_uk_market")} — {t(labels, "trust_title")}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-base text-gray-500">
