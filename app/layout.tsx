@@ -72,15 +72,15 @@ export default async function RootLayout({
               <MarketDropdown
                 buttonLabel={t(labels, "nav_exchanges")}
                 markets={[
-                  { href: "/", label: t(labels, "nav_usStocks"), flag: "🇺🇸" },
-                  { href: "/asx", label: t(labels, "nav_asx"), flag: "🇦🇺" },
-                  { href: "/china", label: t(labels, "nav_china"), flag: "🇨🇳" },
-                  { href: "/hongkong", label: t(labels, "nav_hongkong"), flag: "🇭🇰" },
-                  { href: "/vietnam", label: t(labels, "nav_vietnam"), flag: "🇻🇳" },
-                  { href: "/thailand", label: t(labels, "nav_thailand"), flag: "🇹🇭" },
-                  { href: "/malaysia", label: t(labels, "nav_malaysia"), flag: "🇲🇾" },
-                  { href: "/indonesia", label: t(labels, "nav_indonesia"), flag: "🇮🇩" },
-                  { href: "/uk", label: t(labels, "nav_uk"), flag: "🇬🇧" },
+                  { href: "/", label: t(labels, "nav_usStocks"), flag: "" },
+                  { href: "/asx", label: t(labels, "nav_asx"), flag: "" },
+                  { href: "/china", label: t(labels, "nav_china"), flag: "" },
+                  { href: "/hongkong", label: t(labels, "nav_hongkong"), flag: "" },
+                  { href: "/vietnam", label: t(labels, "nav_vietnam"), flag: "" },
+                  { href: "/thailand", label: t(labels, "nav_thailand"), flag: "" },
+                  { href: "/malaysia", label: t(labels, "nav_malaysia"), flag: "" },
+                  { href: "/indonesia", label: t(labels, "nav_indonesia"), flag: "" },
+                  { href: "/uk", label: t(labels, "nav_uk"), flag: "" },
                 ]}
               />
               <a href="/watchlist" className="text-gray-500 hover:text-[#2e8b57] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
