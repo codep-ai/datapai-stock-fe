@@ -135,7 +135,7 @@ export default function ScreenshotImport({ mode, onComplete, labels }: Props) {
           onClick={() => fileRef.current?.click()}
           className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-[#2e8b57] hover:bg-green-50/30 transition-colors"
         >
-          <div className="text-4xl mb-2">📸</div>
+          <div className="text-4xl mb-2"></div>
           <p className="text-sm font-semibold text-gray-600">
             {L(labels, "import_drop", "Drop a screenshot here, or click to upload")}
           </p>

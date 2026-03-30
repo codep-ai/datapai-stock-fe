@@ -65,7 +65,7 @@ export default async function IndonesiaPage() {
             lang={lang}
           />
 
-          <div className="flex gap-3 items-center flex-wrap">
+          <div className="flex gap-3 items-center flex-wrap relative">
             <Link
               href="/alerts"
               className="px-6 py-2.5 rounded-lg font-bold uppercase tracking-wide transition-all hover:-translate-y-0.5"
@@ -73,19 +73,18 @@ export default async function IndonesiaPage() {
             >
               {t(labels, "hero_view_alerts")} →
             </Link>
+            <details className="group">
+              <summary
+                className="px-6 py-2.5 rounded-lg font-bold uppercase tracking-wide transition-all hover:-translate-y-0.5 cursor-pointer list-none inline-flex items-center gap-2"
+                style={{ fontSize: "0.9rem", background: "#fd8412", color: "#fff" }}
+              >
+                {t(labels, "import_title")}
+              </summary>
+              <div className="absolute left-0 right-0 mt-3 bg-white/95 rounded-xl p-5 backdrop-blur-sm z-50 shadow-lg">
+                <ScreenshotImport mode="watchlist" labels={labels} />
+              </div>
+            </details>
           </div>
-
-          <details className="group">
-            <summary
-              className="px-6 py-2.5 rounded-lg font-bold uppercase tracking-wide transition-all hover:-translate-y-0.5 cursor-pointer list-none inline-flex items-center gap-2"
-              style={{ fontSize: "0.9rem", background: "#fd8412", color: "#fff" }}
-            >
-              📸 {t(labels, "import_title")}
-            </summary>
-            <div className="mt-3 bg-white/95 rounded-xl p-5 backdrop-blur-sm">
-              <ScreenshotImport mode="watchlist" labels={labels} />
-            </div>
-          </details>
         </div>
       </div>
 
