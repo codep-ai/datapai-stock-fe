@@ -56,13 +56,19 @@ const STEPS = [
   "Running AI analysis",
 ];
 
+function L(labels: Record<string, string> | undefined, key: string, fallback: string): string {
+  return labels?.[key] ?? fallback;
+}
+
 export default function LiveScanProgress({
   exchange,
   watchlist,
   heroButton,
+  labels,
 }: {
   exchange?: "ASX" | "US";
   watchlist?: boolean;
+  labels?: Record<string, string>;
   heroButton?: boolean; // solid orange CTA style, for inline placement alongside other buttons
 }) {
   // Fetch universe dynamically from the API (watchlist or active stocks by exchange)
@@ -243,11 +249,11 @@ export default function LiveScanProgress({
           {watchlist && !universeLoaded ? (
             <button disabled className="px-6 py-3 rounded-lg font-semibold text-white/50 cursor-wait"
               style={{ background: "rgba(255,255,255,0.1)", border: "1.5px solid rgba(255,255,255,0.3)" }}>
-              ⟳ Loading watchlist...
+              ⟳ {L(labels, "scan_loading", "Loading watchlist...")}
             </button>
           ) : watchlist && universe.length === 0 ? (
             <div className="text-white/60 text-sm py-2">
-              ☆ Your watchlist is empty — add stocks using the ⭐ button on any ticker page.
+              ☆ {L(labels, "scan_empty", "Your watchlist is empty")}
             </div>
           ) : (
             <button
@@ -258,7 +264,7 @@ export default function LiveScanProgress({
                 : { background: "rgba(255,255,255,0.2)", border: "1.5px solid rgba(255,255,255,0.6)", color: "#fff", fontWeight: 600 }
               }
             >
-              ▶ {watchlist ? `Scan My Watchlist (${universe.length})` : "Run Live Scan"}
+              ▶ {watchlist ? `${L(labels, "scan_watchlist", "Scan My Watchlist")} (${universe.length})` : L(labels, "scan_live", "Run Live Scan")}
             </button>
           )}
         </>
@@ -373,13 +379,13 @@ export default function LiveScanProgress({
                 className="px-4 py-2 rounded-lg text-sm font-semibold"
                 style={{ background: "#fd8412", color: "#fff", fontWeight: 800 }}
               >
-                View Alerts
+                {L(labels, "scan_view_alerts", "View Alerts")}
               </a>
               <button
                 onClick={() => { setPhase("idle"); setTickers({}); setRun(null); setRunId(null); stopPolling(); }}
                 className="px-4 py-2 rounded-lg text-sm font-semibold text-white/70 hover:text-white border border-white/30"
               >
-                Scan Again
+                {L(labels, "scan_again", "Scan Again")}
               </button>
             </div>
           )}

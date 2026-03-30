@@ -61,7 +61,7 @@ export default async function UkPage() {
             >
               {t(labels, "hero_view_alerts")} →
             </Link>
-            <LiveScanProgress exchange="LSE" heroButton />
+            <LiveScanProgress exchange="LSE" heroButton labels={labels} />
             <details className="group">
               <summary
                 className="px-6 py-2.5 rounded-lg font-bold uppercase tracking-wide transition-all hover:-translate-y-0.5 cursor-pointer list-none inline-flex items-center gap-2"
