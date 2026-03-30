@@ -154,10 +154,16 @@ export default function ProfilePage() {
             {updatedAt && <span className="ml-2 text-gray-400">Last updated {updatedAt}</span>}
           </p>
         </div>
-        <Link href="/profile/onboarding"
-          className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-all whitespace-nowrap">
-          Re-run wizard →
-        </Link>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => { localStorage.removeItem("datapai_tour_completed"); window.location.href = "/"; }}
+            className="text-xs font-medium px-3 py-1.5 rounded-lg border border-green-200 text-green-700 hover:bg-green-50 transition-all whitespace-nowrap">
+            Take a tour
+          </button>
+          <Link href="/profile/onboarding"
+            className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-all whitespace-nowrap">
+            Re-run wizard →
+          </Link>
+        </div>
       </div>
 
       <div className="space-y-5">

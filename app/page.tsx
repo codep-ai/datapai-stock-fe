@@ -48,7 +48,9 @@ export default async function Home() {
             {t(labels, "hero_realBrowser_agents")}
           </p>
 
-          <TickerSearch placeholder={t(labels, "intel_search")} analyseLabel={t(labels, "analyse_btn")} lang={lang} />
+          <div data-tour="search-bar">
+            <TickerSearch placeholder={t(labels, "intel_search")} analyseLabel={t(labels, "analyse_btn")} lang={lang} />
+          </div>
 
           <div className="flex gap-3 items-center flex-wrap relative">
             {alertCount > 0 && (
@@ -154,7 +156,7 @@ export default async function Home() {
                           {analysis.alert_score > 0 ? "+" : ""}{analysis.alert_score.toFixed(1)}
                         </span>
                       )}
-                      <div className="absolute top-1.5 right-1.5 z-10">
+                      <div className="absolute top-1.5 right-1.5 z-10" {...(idx === 0 ? { "data-tour": "watchlist-star" } : {})}>
                         <WatchlistButton compact symbol={tk.symbol} exchange="US" name={tk.name} />
                       </div>
                       <Link href={`/ticker/${tk.symbol}?exchange=${tk.exchange}`} className="block pr-6">

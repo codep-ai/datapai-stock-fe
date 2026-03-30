@@ -15,6 +15,7 @@ import EarlySupporterBadge from "./components/EarlySupporterBadge";
 import OnboardingBanner from "./components/OnboardingBanner";
 import MarketDropdown from "./components/MarketDropdown";
 import GlobalCopilot from "./components/GlobalCopilot";
+import OnboardingTour from "./components/OnboardingTour";
 import { WatchlistProvider } from "./components/WatchlistContext";
 
 const poppins = Poppins({
@@ -83,13 +84,13 @@ export default async function RootLayout({
                   { href: "/uk", label: t(labels, "nav_uk"), flag: "" },
                 ]}
               />
-              <a href="/watchlist" className="text-gray-500 hover:text-[#2e8b57] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
+              <a href="/watchlist" data-tour="nav-watchlist" className="text-gray-500 hover:text-[#2e8b57] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
                 style={{ fontSize: "0.92rem" }}>{t(labels, "nav_watchlist")}</a>
-              <a href="/intel" className="text-gray-500 hover:text-[#6366f1] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
+              <a href="/intel" data-tour="nav-ai" className="text-gray-500 hover:text-[#6366f1] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
                 style={{ fontSize: "0.92rem" }}>{t(labels, "nav_aiAnalysis")}</a>
-              <a href="/screener" className="text-gray-500 hover:text-[#2e8b57] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
+              <a href="/screener" data-tour="nav-screener" className="text-gray-500 hover:text-[#2e8b57] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
                 style={{ fontSize: "0.92rem" }}>{t(labels, "nav_screener")}</a>
-              <a href="/studio" className="text-gray-500 hover:text-[#6366f1] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
+              <a href="/studio" data-tour="nav-studio" className="text-gray-500 hover:text-[#6366f1] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
                 style={{ fontSize: "0.92rem" }}>{t(labels, "nav_studio")}</a>
               <a href="/performance" className="text-gray-500 hover:text-[#6366f1] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
                 style={{ fontSize: "0.92rem" }}>{t(labels, "nav_performance")}</a>
@@ -167,6 +168,14 @@ export default async function RootLayout({
 
         {/* Global AI Copilot — floating chat on every page */}
         <GlobalCopilot lang={lang} />
+
+        {/* Onboarding tour — auto-shows for logged-in users who finished profile but haven't seen tour */}
+        {user && (
+          <OnboardingTour
+            labels={labels}
+            autoShow={investorProfile?.onboarding_completed ?? false}
+          />
+        )}
 
         {/* Footer */}
         <footer style={{ background: "#252525" }} className="mt-16">

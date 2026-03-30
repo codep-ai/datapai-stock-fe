@@ -347,6 +347,7 @@ export default function GlobalCopilot({ lang = "en" }: { lang?: string }) {
     return (
       <button
         onClick={() => setOpen(true)}
+        data-tour="copilot-bubble"
         className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 hover:shadow-xl"
         style={{ background: "linear-gradient(135deg, #2e8b57, #3cb371)" }}
         title="AI Copilot"
