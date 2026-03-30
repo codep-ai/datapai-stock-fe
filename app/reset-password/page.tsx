@@ -3,6 +3,7 @@
 import { useState, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import PasswordInput from "../components/PasswordInput";
 
 // Re-use same password rules as register page
 interface PasswordRule { label: string; test: (p: string) => boolean }
@@ -91,11 +92,11 @@ function ResetForm() {
       )}
       <div className="space-y-1.5">
         <label className="text-sm font-semibold text-gray-700" htmlFor="password">New password</label>
-        <input
-          id="password" type="password" value={password}
+        <PasswordInput
+          id="password" value={password}
           onChange={(e) => setPassword(e.target.value)}
-          required autoComplete="new-password" placeholder="••••••••••••"
-          className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2"
+          required placeholder="••••••••••••"
+          className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 pr-10"
         />
         {password.length > 0 && (
           <div className="space-y-1 mt-1">
@@ -122,11 +123,11 @@ function ResetForm() {
       </div>
       <div className="space-y-1.5">
         <label className="text-sm font-semibold text-gray-700" htmlFor="confirm">Confirm new password</label>
-        <input
-          id="confirm" type="password" value={confirm}
+        <PasswordInput
+          id="confirm" value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
-          required autoComplete="new-password" placeholder="••••••••••••"
-          className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2"
+          required placeholder="••••••••••••"
+          className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 pr-10"
         />
         {confirm.length > 0 && (
           <p className={`text-xs font-medium ${confirm === password ? "text-emerald-600" : "text-red-500"}`}>

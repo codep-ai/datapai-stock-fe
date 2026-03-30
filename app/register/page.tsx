@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import PasswordInput from "../components/PasswordInput";
 
 // ── i18n helper ─────────────────────────────────────────────────────────────
 
@@ -177,15 +178,13 @@ export default function RegisterPage() {
             <label className="text-sm font-semibold text-gray-700" htmlFor="password">
               {t(labels, "reg_password", "Password")}
             </label>
-            <input
+            <PasswordInput
               id="password"
-              type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              autoComplete="new-password"
               placeholder="••••••••"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 pr-10"
             />
             <StrengthMeter password={password} labels={labels} rules={rules} />
           </div>
@@ -194,15 +193,13 @@ export default function RegisterPage() {
             <label className="text-sm font-semibold text-gray-700" htmlFor="confirm">
               {t(labels, "reg_confirm", "Confirm password")}
             </label>
-            <input
+            <PasswordInput
               id="confirm"
-              type="password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               required
-              autoComplete="new-password"
               placeholder="••••••••"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 pr-10"
             />
             {confirm.length > 0 && (
               <p className={`text-xs font-medium ${confirm === password ? "text-emerald-600" : "text-red-500"}`}>
