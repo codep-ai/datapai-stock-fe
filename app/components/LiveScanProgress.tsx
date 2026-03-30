@@ -66,7 +66,7 @@ export default function LiveScanProgress({
   heroButton,
   labels,
 }: {
-  exchange?: "ASX" | "US";
+  exchange?: string;
   watchlist?: boolean;
   labels?: Record<string, string>;
   heroButton?: boolean; // solid orange CTA style, for inline placement alongside other buttons

@@ -13,6 +13,7 @@ import TickerSearch from "../components/TickerSearch";
 import WatchlistButton from "../components/WatchlistButton";
 import StockViewToggle from "../components/StockViewToggle";
 import ScreenshotImport from "../components/ScreenshotImport";
+import LiveScanProgress from "../components/LiveScanProgress";
 
 export const dynamic = "force-dynamic";
 
@@ -150,6 +151,7 @@ export default async function ChinaPage() {
             >
               {t(labels, "hero_view_alerts")} &rarr;
             </Link>
+            <LiveScanProgress exchange="SSE" heroButton labels={labels} />
             <details className="group">
               <summary
                 className="px-6 py-2.5 rounded-lg font-bold uppercase tracking-wide transition-all hover:-translate-y-0.5 cursor-pointer list-none inline-flex items-center gap-2"
