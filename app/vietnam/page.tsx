@@ -11,6 +11,7 @@ import { t } from "@/lib/translations";
 import TickerSearch from "../components/TickerSearch";
 import WatchlistButton from "../components/WatchlistButton";
 import StockViewToggle from "../components/StockViewToggle";
+import ScreenshotImport from "../components/ScreenshotImport";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +76,19 @@ export default async function VietnamPage() {
             </Link>
           </div>
         </div>
+      </div>
+
+      {/* Screenshot Import */}
+      <div className="max-w-6xl mx-auto px-6 mt-4">
+        <details className="bg-white border border-gray-200 rounded-xl shadow-sm">
+          <summary className="px-5 py-3 cursor-pointer text-sm font-semibold text-gray-600 hover:text-[#2e8b57] transition-colors flex items-center gap-2">
+            {t(labels, "import_title")}
+          </summary>
+          <div className="px-5 pb-4">
+            <p className="text-xs text-gray-400 mb-3">{t(labels, "import_desc")}</p>
+            <ScreenshotImport mode="watchlist" labels={labels} />
+          </div>
+        </details>
       </div>
 
       {/* ── Main content ── */}

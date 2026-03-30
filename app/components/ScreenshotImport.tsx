@@ -75,37 +75,45 @@ export default function ScreenshotImport({ mode, onComplete, labels }: Props) {
     if (file) handleFile(file);
   }, [handleFile]);
 
+  const [needsLogin, setNeedsLogin] = useState(false);
+
   const handleConfirm = useCallback(async () => {
     const selected = holdings.filter((h) => h.selected);
     if (!selected.length) return;
 
     setPhase("saving");
     let count = 0;
+    let authFailed = false;
 
     for (const h of selected) {
       try {
-        if (mode === "watchlist") {
-          await fetch("/api/watchlist", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ symbol: h.ticker, exchange: h.exchange, name: h.name }),
-          });
-        } else {
-          await fetch("/api/portfolio", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              ticker: h.ticker,
-              exchange: h.exchange,
-              shares: h.shares ?? 0,
-              avg_cost: h.avg_cost ?? 0,
-            }),
-          });
-        }
-        count++;
+        const res = mode === "watchlist"
+          ? await fetch("/api/watchlist", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ symbol: h.ticker, exchange: h.exchange, name: h.name }),
+            })
+          : await fetch("/api/portfolio", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                ticker: h.ticker,
+                exchange: h.exchange,
+                shares: h.shares ?? 0,
+                avg_cost: h.avg_cost ?? 0,
+              }),
+            });
+        if (res.status === 401) { authFailed = true; break; }
+        if (res.ok) count++;
       } catch {
         // Continue on individual failures
       }
+    }
+
+    if (authFailed) {
+      setNeedsLogin(true);
+      setPhase("preview");
+      return;
     }
 
     setSavedCount(count);
@@ -247,22 +255,40 @@ export default function ScreenshotImport({ mode, onComplete, labels }: Props) {
           </table>
         </div>
 
-        <div className="flex gap-3">
-          <button
-            onClick={handleConfirm}
-            disabled={selectedCount === 0}
-            className="px-5 py-2 rounded-lg text-sm font-semibold text-white transition-all disabled:opacity-40"
-            style={{ background: "#2e8b57" }}
-          >
-            {selectedCount} → {mode === "watchlist" ? L(labels, "import_add_watchlist", "Add to Watchlist") : L(labels, "import_add_portfolio", "Add to Portfolio")}
-          </button>
-          <button
-            onClick={() => { setPhase("idle"); setHoldings([]); setPreview(null); setError(null); }}
-            className="px-5 py-2 rounded-lg text-sm font-semibold text-gray-500 border border-gray-300 hover:bg-gray-50"
-          >
-            {L(labels, "import_cancel", "Cancel")}
-          </button>
-        </div>
+        {needsLogin && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 flex items-center justify-between flex-wrap gap-3">
+            <p className="text-sm text-emerald-800 font-medium">
+              {L(labels, "import_signup_prompt", "Create a free account to save your stocks")}
+            </p>
+            <div className="flex gap-2">
+              <a href="/register" className="px-4 py-2 rounded-lg text-sm font-bold text-white" style={{ background: "#2e8b57" }}>
+                {L(labels, "import_signup_btn", "Sign up free")}
+              </a>
+              <a href="/login" className="px-4 py-2 rounded-lg text-sm font-semibold text-gray-500 border border-gray-300">
+                {L(labels, "import_login_btn", "Log in")}
+              </a>
+            </div>
+          </div>
+        )}
+
+        {!needsLogin && (
+          <div className="flex gap-3">
+            <button
+              onClick={handleConfirm}
+              disabled={selectedCount === 0}
+              className="px-5 py-2 rounded-lg text-sm font-semibold text-white transition-all disabled:opacity-40"
+              style={{ background: "#2e8b57" }}
+            >
+              {selectedCount} → {mode === "watchlist" ? L(labels, "import_add_watchlist", "Add to Watchlist") : L(labels, "import_add_portfolio", "Add to Portfolio")}
+            </button>
+            <button
+              onClick={() => { setPhase("idle"); setHoldings([]); setPreview(null); setError(null); }}
+              className="px-5 py-2 rounded-lg text-sm font-semibold text-gray-500 border border-gray-300 hover:bg-gray-50"
+            >
+              {L(labels, "import_cancel", "Cancel")}
+            </button>
+          </div>
+        )}
       </div>
     );
   }

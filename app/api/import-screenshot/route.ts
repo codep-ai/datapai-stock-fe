@@ -11,12 +11,8 @@ const AGENT_BASE = (process.env.AGENT_BACKEND_BASE_URL ?? "").replace(/\/$/, "")
 const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
 
 export async function POST(req: NextRequest) {
-  // Auth required
-  const user = await getAuthUser();
-  if (!user) {
-    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-  }
-
+  // No auth required for extraction — let users see results before signup.
+  // Auth is checked when saving to watchlist/portfolio.
   if (!AGENT_BASE) {
     return NextResponse.json({ ok: false, error: "AGENT_BACKEND_BASE_URL not configured" }, { status: 503 });
   }
