@@ -1,6 +1,7 @@
 import { getLatestAnalysesBySignalType, getWatchlist, lookupStock } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
 import { getLang } from "@/lib/getLang";
+import { loadTranslations } from "@/lib/i18n";
 import AlertsClient from "./AlertsClient";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +42,8 @@ export default async function AlertsPage({
     }
   }
 
+  const labels = await loadTranslations(lang);
+
   return (
     <AlertsClient
       contentOnly={filteredContent}
@@ -48,6 +51,7 @@ export default async function AlertsPage({
       universe={universe}
       exchangeMap={exchangeMap}
       watchlistOnly={watchlistOnly}
+      labels={labels}
     />
   );
 }
