@@ -63,20 +63,19 @@ export default async function UkPage() {
             </Link>
             <LiveScanProgress exchange="LSE" heroButton />
           </div>
-        </div>
-      </div>
 
-      {/* Screenshot Import */}
-      <div className="max-w-6xl mx-auto px-6 mt-4">
-        <details className="bg-white border border-gray-200 rounded-xl shadow-sm">
-          <summary className="px-5 py-3 cursor-pointer text-sm font-semibold text-gray-600 hover:text-[#2e8b57] transition-colors flex items-center gap-2">
-            {t(labels, "import_title")}
-          </summary>
-          <div className="px-5 pb-4">
-            <p className="text-xs text-gray-400 mb-3">{t(labels, "import_desc")}</p>
-            <ScreenshotImport mode="watchlist" labels={labels} />
-          </div>
-        </details>
+          <details className="group">
+            <summary
+              className="px-6 py-2.5 rounded-lg font-bold uppercase tracking-wide transition-all hover:-translate-y-0.5 cursor-pointer list-none inline-flex items-center gap-2"
+              style={{ fontSize: "0.9rem", background: "#fd8412", color: "#fff" }}
+            >
+              📸 {t(labels, "import_title")}
+            </summary>
+            <div className="mt-3 bg-white/95 rounded-xl p-5 backdrop-blur-sm">
+              <ScreenshotImport mode="watchlist" labels={labels} />
+            </div>
+          </details>
+        </div>
       </div>
 
       {/* Main content */}
