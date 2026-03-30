@@ -5,7 +5,7 @@
  */
 
 import Link from "next/link";
-import { getAlertSummaryMap, getRecentRuns, getScannedTickerSet, getActiveStocks, countActiveStocks } from "@/lib/db";
+import { getAlertSummaryMap, getRecentRuns, getScannedTickerSet, getActiveStocks, countActiveStocks, getLatestPricesForWatchlist } from "@/lib/db";
 import { getLang } from "@/lib/getLang";
 import { loadTranslations } from "@/lib/i18n";
 import { t } from "@/lib/translations";
@@ -24,12 +24,13 @@ function fmtHKD(value: number): string {
 export default async function HongKongPage() {
   const lang = await getLang();
   const stocks = await getActiveStocks("HKEX", lang, 30, true);
-  const [labels, alertMap, scannedSet, recentRuns, totalHk] = await Promise.all([
+  const [labels, alertMap, scannedSet, recentRuns, totalHk, priceMap] = await Promise.all([
     loadTranslations(lang),
     getAlertSummaryMap(),
     getScannedTickerSet(),
     getRecentRuns(3),
     countActiveStocks("HKEX"),
+    getLatestPricesForWatchlist(stocks.map((s) => ({ symbol: s.symbol, exchange: "HKEX" }))),
   ]);
   const lastRun = recentRuns[0] ?? null;
   const hkAlertCount = stocks.filter((s) => !!alertMap[s.symbol]).length;
@@ -126,8 +127,8 @@ export default async function HongKongPage() {
 
           {(() => {
             const sorted = [...stocks].sort((a, b) => {
-              const pctA = (a as any).change_1d_pct ?? -Infinity;
-              const pctB = (b as any).change_1d_pct ?? -Infinity;
+              const pctA = priceMap[a.symbol] ? Number(priceMap[a.symbol].change_pct) : -Infinity;
+              const pctB = priceMap[b.symbol] ? Number(priceMap[b.symbol].change_pct) : -Infinity;
               return (isNaN(pctB) ? -Infinity : pctB) - (isNaN(pctA) ? -Infinity : pctA);
             });
 
@@ -138,8 +139,9 @@ export default async function HongKongPage() {
                   const hasAlert = !!analysis;
                   const hasSnapshot = scannedSet.has(tk.symbol);
                   const confidence = analysis?.confidence ?? 0;
-                  const closeNum = (tk as any).price ? Number((tk as any).price) : null;
-                  const changePct = (tk as any).change_1d_pct != null ? Number((tk as any).change_1d_pct) : null;
+                  const price = priceMap[tk.symbol];
+                  const closeNum = price ? Number(price.close) : null;
+                  const changePct = price ? Number(price.change_pct) : null;
                   const isUp = changePct !== null && !isNaN(changePct) && changePct >= 0;
                   const cardStyle = changePct !== null && !isNaN(changePct) && changePct < 0
                     ? { background: "#fef2f2", border: "1.5px solid #fca5a5" }
@@ -208,8 +210,9 @@ export default async function HongKongPage() {
                   </thead>
                   <tbody>
                     {sorted.map((tk, idx) => {
-                      const closeNum = (tk as any).price ? Number((tk as any).price) : null;
-                      const changePct = (tk as any).change_1d_pct != null ? Number((tk as any).change_1d_pct) : null;
+                      const price = priceMap[tk.symbol];
+                      const closeNum = price ? Number(price.close) : null;
+                      const changePct = price ? Number(price.change_pct) : null;
                       const isUp = changePct !== null && !isNaN(changePct) && changePct >= 0;
                       const rowBg = changePct !== null && !isNaN(changePct) && changePct < 0 ? "#fef2f2" : changePct !== null && !isNaN(changePct) && changePct >= 0 ? "#f0fdf4" : "#fff";
                       return (

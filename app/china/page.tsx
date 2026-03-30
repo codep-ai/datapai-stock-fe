@@ -5,7 +5,7 @@
  */
 
 import Link from "next/link";
-import { getAlertSummaryMap, getRecentRuns, getScannedTickerSet, getActiveStocks, countActiveStocks } from "@/lib/db";
+import { getAlertSummaryMap, getRecentRuns, getScannedTickerSet, getActiveStocks, countActiveStocks, getLatestPricesForWatchlist } from "@/lib/db";
 import { getLang } from "@/lib/getLang";
 import { loadTranslations } from "@/lib/i18n";
 import { t } from "@/lib/translations";
@@ -31,20 +31,21 @@ export default async function ChinaPage() {
   ]);
   const allStocks = [...sseStocks, ...szseStocks];
 
-  const [labels, alertMap, scannedSet, recentRuns, totalSSE, totalSZSE] = await Promise.all([
+  const [labels, alertMap, scannedSet, recentRuns, totalSSE, totalSZSE, priceMap] = await Promise.all([
     loadTranslations(lang),
     getAlertSummaryMap(),
     getScannedTickerSet(),
     getRecentRuns(3),
     countActiveStocks("SSE"),
     countActiveStocks("SZSE"),
+    getLatestPricesForWatchlist(allStocks.map((s) => ({ symbol: s.symbol, exchange: s.exchange }))),
   ]);
   const lastRun = recentRuns[0] ?? null;
 
   function renderStockGrid(stocks: typeof sseStocks, exchange: string) {
     const sorted = [...stocks].sort((a, b) => {
-      const pctA = (a as any).change_1d_pct ?? -Infinity;
-      const pctB = (b as any).change_1d_pct ?? -Infinity;
+      const pctA = priceMap[a.symbol] ? Number(priceMap[a.symbol].change_pct) : -Infinity;
+      const pctB = priceMap[b.symbol] ? Number(priceMap[b.symbol].change_pct) : -Infinity;
       return (isNaN(pctB) ? -Infinity : pctB) - (isNaN(pctA) ? -Infinity : pctA);
     });
 
@@ -55,8 +56,9 @@ export default async function ChinaPage() {
           const hasAlert = !!analysis;
           const hasSnapshot = scannedSet.has(tk.symbol);
           const confidence = analysis?.confidence ?? 0;
-          const closeNum = (tk as any).price ? Number((tk as any).price) : null;
-          const changePct = (tk as any).change_1d_pct != null ? Number((tk as any).change_1d_pct) : null;
+          const price = priceMap[tk.symbol];
+          const closeNum = price ? Number(price.close) : null;
+          const changePct = price ? Number(price.change_pct) : null;
           const isUp = changePct !== null && !isNaN(changePct) && changePct >= 0;
           const cardStyle = changePct !== null && !isNaN(changePct) && changePct < 0
             ? { background: "#fef2f2", border: "1.5px solid #fca5a5" }

@@ -783,14 +783,28 @@ export async function getLatestPricesForWatchlist(
 ): Promise<Record<string, TickerPrice>> {
   if (!items.length) return {};
   const symbols = items.map(i => i.symbol);
-  // Intraday only — refreshed every 5-30min by intraday DAG, kept for 3 days
+  // Get latest close + previous close to compute real change_pct.
+  // Uses the two most recent intraday bars per ticker (refreshed every 5-30min).
+  // Falls back to market_demo_stocks.change_1d_pct if only one bar exists.
   const rows = await q<TickerPrice>(
-    `SELECT DISTINCT ON (ticker)
-            ticker, close, 0::numeric AS prev_close,
-            0::numeric AS change_pct, ts::text AS trade_date
-     FROM datapai.ohlcv_intraday
-     WHERE ticker = ANY($1)
-     ORDER BY ticker, ts DESC`,
+    `WITH ranked AS (
+       SELECT ticker, close, ts,
+              ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY ts DESC) AS rn
+       FROM datapai.ohlcv_intraday
+       WHERE ticker = ANY($1)
+     )
+     SELECT r1.ticker,
+            r1.close,
+            COALESCE(r2.close, r1.close) AS prev_close,
+            CASE WHEN r2.close IS NOT NULL AND r2.close <> 0
+                 THEN ROUND(((r1.close - r2.close) / r2.close * 100)::numeric, 2)
+                 ELSE COALESCE(d.change_1d_pct, 0)
+            END AS change_pct,
+            r1.ts::text AS trade_date
+     FROM ranked r1
+     LEFT JOIN ranked r2 ON r2.ticker = r1.ticker AND r2.rn = 2
+     LEFT JOIN datapai.market_demo_stocks d ON d.ticker = r1.ticker
+     WHERE r1.rn = 1`,
     [symbols]
   );
   const result: Record<string, TickerPrice> = {};

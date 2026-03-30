@@ -555,6 +555,8 @@ function TechnicalTab({ labels }: { labels: Labels }) {
   const [near52Low,  setNear52Low]  = useState("");
   const [limit,      setLimit]      = useState(50);
 
+  const [actionFilter, setActionFilter] = useState<"actionable" | "all">("actionable");
+
   const [rows,    setRows]    = useState<TechRow[]>([]);
   const [total,   setTotal]   = useState(0);
   const [loading, setLoading] = useState(false);
@@ -615,6 +617,27 @@ function TechnicalTab({ labels }: { labels: Labels }) {
       <div className="w-full" style={{ background: "linear-gradient(135deg, #2e8b57, #3cb371)", padding: "16px 0 20px" }}>
         <div className="max-w-7xl mx-auto px-8">
           <div className="flex items-end gap-3 flex-wrap">
+
+            {/* Action filter — default to actionable only */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-semibold text-white/70 uppercase tracking-wide">{L(labels, "screener_filter_action", "Show")}</label>
+              <div className="flex gap-1">
+                <button onClick={() => setActionFilter("actionable")}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                  style={actionFilter === "actionable"
+                    ? { background: "#fd8412", color: "#fff" }
+                    : { background: "rgba(255,255,255,0.2)", color: "#fff" }}>
+                  {L(labels, "screener_action_buy_sell", "BUY / SELL")}
+                </button>
+                <button onClick={() => setActionFilter("all")}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                  style={actionFilter === "all"
+                    ? { background: "#fd8412", color: "#fff" }
+                    : { background: "rgba(255,255,255,0.2)", color: "#fff" }}>
+                  {L(labels, "screener_action_all", "All")}
+                </button>
+              </div>
+            </div>
 
             {/* Exchange */}
             <div className="flex flex-col gap-1">
@@ -750,12 +773,28 @@ function TechnicalTab({ labels }: { labels: Labels }) {
           </div>
         )}
 
-        {!loading && rows.length > 0 && (
+        {!loading && rows.length > 0 && (() => {
+          // Client-side action filter: only show stocks with BUY or SELL in any timeframe
+          const filteredRows = actionFilter === "actionable"
+            ? rows.filter((r) => {
+                const signals = [signalDays(r), signalWeeks(r), signalMonths(r), signalQuarter(r)];
+                return signals.some((s) => s === "BUY" || s === "SELL");
+              })
+            : rows;
+          return (
           <>
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-500">
-                <strong>{rows.length}</strong> {L(labels, "screener_of", "of")} <strong>{total.toLocaleString()}</strong> {exchange} {L(labels, "screener_stocks", "stocks")}
-                {rows.length < total && ` ${L(labels, "screener_filtered", "(filtered)")}`}
+                {actionFilter === "actionable" ? (
+                  <>
+                    <strong>{filteredRows.length}</strong> {L(labels, "screener_actionable_of", "actionable of")} <strong>{total.toLocaleString()}</strong> {exchange} {L(labels, "screener_stocks", "stocks")}
+                  </>
+                ) : (
+                  <>
+                    <strong>{rows.length}</strong> {L(labels, "screener_of", "of")} <strong>{total.toLocaleString()}</strong> {exchange} {L(labels, "screener_stocks", "stocks")}
+                    {rows.length < total && ` ${L(labels, "screener_filtered", "(filtered)")}`}
+                  </>
+                )}
               </p>
               <p className="text-xs text-gray-400">
                 {L(labels, "screener_updated", "Updated")}: {rows[0]?.trade_date ?? "—"} · {L(labels, "screener_sort_tip", "Click column headers to sort")}
@@ -800,7 +839,7 @@ function TechnicalTab({ labels }: { labels: Labels }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((r, idx) => (
+                  {filteredRows.map((r, idx) => (
                     <tr key={r.ticker} className="border-b border-gray-50 hover:bg-[#f0f7f1] transition-colors"
                       style={idx % 2 ? { background: "#fafafa" } : {}}>
                       <td className="px-1 py-1 text-center">
@@ -858,7 +897,8 @@ function TechnicalTab({ labels }: { labels: Labels }) {
               </table>
             </div>
           </>
-        )}
+          );
+        })()}
 
         {!loading && rows.length === 0 && !error && (
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-12 text-center">
