@@ -783,22 +783,18 @@ export async function getLatestPricesForWatchlist(
 ): Promise<Record<string, TickerPrice>> {
   if (!items.length) return {};
   const symbols = items.map(i => i.symbol);
-  // Smart price selection:
-  //   - During trading hours: no EOD for today yet → use intraday (live)
-  //   - After EOD runs:       today's date in datapai.prices → use EOD (correct close)
-  //   - Weekends/holidays:    no intraday → use last EOD
-  //
-  // Logic: if EOD trade_date >= intraday date (YYYY-MM-DD), EOD is fresher → use it.
-  //        Otherwise intraday is more recent → use it.
-  //
-  // change_pct: always vs previous day's EOD close.
+  // Simple: just read latest intraday bar per ticker.
+  // The EOD pipeline inserts a closing bar (16:00) into ohlcv_intraday
+  // after fetching the correct daily close from Yahoo, so this always
+  // returns the right price — live during trading, correct close after EOD.
+  // change_pct: vs previous day's EOD close from datapai.prices.
   const rows = await q<TickerPrice>(
-    `WITH latest_eod AS (
+    `WITH latest AS (
        SELECT DISTINCT ON (ticker)
-              ticker, close, trade_date::date AS td
-       FROM datapai.prices
+              ticker, close, ts::text AS trade_date
+       FROM datapai.ohlcv_intraday
        WHERE ticker = ANY($1)
-       ORDER BY ticker, trade_date DESC
+       ORDER BY ticker, ts DESC
      ),
      prev_eod AS (
        SELECT DISTINCT ON (ticker)
@@ -807,32 +803,17 @@ export async function getLatestPricesForWatchlist(
        WHERE ticker = ANY($1)
          AND trade_date::date < CURRENT_DATE
        ORDER BY ticker, trade_date DESC
-     ),
-     latest_intraday AS (
-       SELECT DISTINCT ON (ticker)
-              ticker, close, ts::date AS td, ts
-       FROM datapai.ohlcv_intraday
-       WHERE ticker = ANY($1)
-       ORDER BY ticker, ts DESC
      )
-     SELECT COALESCE(le.ticker, li.ticker) AS ticker,
-            CASE WHEN le.td IS NOT NULL AND (li.td IS NULL OR le.td >= li.td)
-                 THEN le.close ELSE li.close
-            END AS close,
-            COALESCE(pe.close, le.close, li.close) AS prev_close,
+     SELECT l.ticker,
+            l.close,
+            COALESCE(pe.close, l.close) AS prev_close,
             CASE WHEN pe.close IS NOT NULL AND pe.close <> 0
-                 THEN ROUND(((
-                   CASE WHEN le.td IS NOT NULL AND (li.td IS NULL OR le.td >= li.td)
-                        THEN le.close ELSE li.close END
-                   - pe.close) / pe.close * 100)::numeric, 2)
+                 THEN ROUND(((l.close - pe.close) / pe.close * 100)::numeric, 2)
                  ELSE 0
             END AS change_pct,
-            CASE WHEN le.td IS NOT NULL AND (li.td IS NULL OR le.td >= li.td)
-                 THEN le.td::text ELSE li.ts::text
-            END AS trade_date
-     FROM latest_eod le
-     FULL OUTER JOIN latest_intraday li ON li.ticker = le.ticker
-     LEFT JOIN prev_eod pe ON pe.ticker = COALESCE(le.ticker, li.ticker)`,
+            l.trade_date
+     FROM latest l
+     LEFT JOIN prev_eod pe ON pe.ticker = l.ticker`,
     [symbols]
   );
   const result: Record<string, TickerPrice> = {};
