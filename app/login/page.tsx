@@ -44,7 +44,7 @@ function LoginForm() {
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="text-5xl mb-3">🔐</div>
+          <img src="/logos/datapai.png" alt="DataP.ai" className="mx-auto mb-3" style={{ height: "48px", width: "auto" }} />
           <h1 className="text-3xl font-bold text-[#252525]">Sign in</h1>
           <p className="text-gray-500 mt-2">Access your personal watchlist &amp; alerts</p>
         </div>

@@ -145,7 +145,7 @@ export default function RegisterPage() {
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="text-5xl mb-3">⭐</div>
+          <img src="/logos/datapai.png" alt="DataP.ai" className="mx-auto mb-3" style={{ height: "48px", width: "auto" }} />
           <h1 className="text-3xl font-bold text-[#252525]">{t(labels, "reg_title", "Create account")}</h1>
           <p className="text-gray-500 mt-2">{t(labels, "reg_subtitle", "Set up your investor profile in 60 seconds")}</p>
         </div>
