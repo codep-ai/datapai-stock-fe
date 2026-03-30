@@ -135,7 +135,7 @@ export default async function Home() {
 
             const gridView = (
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
-                {sorted.map((tk) => {
+                {sorted.map((tk, idx) => {
                   const analysis = alertMap[tk.symbol];
                   const hasAlert = !!analysis;
                   const hasSnapshot = scannedSet.has(tk.symbol);
