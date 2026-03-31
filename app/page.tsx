@@ -77,28 +77,50 @@ export default async function HomePage() {
         className="w-full"
         style={{ background: "linear-gradient(45deg, seagreen, darkseagreen)", paddingTop: "60px", paddingBottom: "60px" }}
       >
-        <div className="max-w-5xl mx-auto px-6 text-center space-y-5">
+        <div className="max-w-5xl mx-auto px-6 space-y-5">
+          {/* Headline + sub — left aligned */}
           <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight">
             {tl(labels, "home_hero_headline", "AI-Powered Stock Intelligence Across Asia-Pacific")}
           </h1>
-          <p className="text-lg md:text-xl text-white/80 max-w-3xl mx-auto">
-            {tl(labels, "home_hero_sub", "12 markets. 50,000+ stocks. 8 languages. Powered by AI agents that never sleep.")}
+          <p className="text-lg md:text-xl text-white/80">
+            {tl(labels, "home_hero_sub", "12 markets. 50,000+ stocks. 8 languages.")}
+            <br />
+            {tl(labels, "home_hero_sub2", "Powered by AI agents that never sleep.")}
           </p>
 
-          {/* Language support line */}
-          <p className="text-sm text-white/60">
+          {/* Language support — same style as headline, left aligned */}
+          <p className="text-lg md:text-xl text-white/80">
             🌐 {tl(labels, "home_lang_title", "Speak Your Language")} — {tl(labels, "home_lang_sub", "Every AI report, signal, and chat — in your preferred language.")}
           </p>
-          <div className="flex items-center justify-center gap-2 flex-wrap">
+
+          {/* Language pills — clickable, switches language */}
+          <div className="flex items-center gap-2 flex-wrap">
             {LANGS.map((l) => (
-              <span key={l.code} className="text-xs text-white/70 bg-white/10 rounded-full px-3 py-1">
+              <a key={l.code}
+                href="#"
+                onClick={undefined}
+                className="text-xs font-semibold rounded-full px-3.5 py-1.5 transition-all hover:brightness-110 hover:-translate-y-0.5 cursor-pointer"
+                style={{ background: "#fbbf24", color: "#252525" }}
+                data-lang={l.code}
+              >
                 {l.flag} {l.label}
-              </span>
+              </a>
             ))}
           </div>
 
+          {/* Language switch script — sets cookie + reload on click */}
+          <script dangerouslySetInnerHTML={{ __html: `
+            document.querySelectorAll('[data-lang]').forEach(function(el) {
+              el.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.cookie = 'lang=' + el.dataset.lang + '; path=/; max-age=31536000; SameSite=Lax';
+                window.location.reload();
+              });
+            });
+          `}} />
+
           {/* CTAs */}
-          <div className="flex items-center justify-center gap-4 flex-wrap pt-2">
+          <div className="flex items-center gap-4 flex-wrap pt-2">
             <Link href="/register"
               className="px-8 py-3.5 rounded-xl font-bold text-white text-base transition-all hover:brightness-110 hover:-translate-y-0.5 shadow-lg"
               style={{ background: "#fd8412" }}>
@@ -116,7 +138,7 @@ export default async function HomePage() {
           </div>
 
           {/* Market flags */}
-          <div className="flex items-center justify-center gap-3 text-2xl pt-2">
+          <div className="flex items-center gap-3 text-2xl pt-2">
             {MARKETS.map((m) => (
               <Link key={m.href} href={m.href} title={t(labels, m.key)} className="hover:scale-125 transition-transform">
                 {m.flag}
