@@ -49,9 +49,11 @@ export async function POST(req: Request) {
 
   // Build enriched context for the Python backend
   // The page_context is a pre-built summary of what the user is viewing
-  const systemContext = body.page_context
-    ? `[COPILOT CONTEXT — user is currently viewing this page]\n${body.page_context}\n\n[END CONTEXT]`
-    : null;
+  const systemContext = [
+    "[COPILOT RULES]",
+    "NEVER make up or guess stock prices. If you do not have the exact current price in the context below, say 'I don't have the latest price — please check the ticker page for real-time data.' Do NOT hallucinate prices.",
+    body.page_context ? `\n[COPILOT CONTEXT — user is currently viewing this page]\n${body.page_context}\n\n[END CONTEXT]` : "",
+  ].join("\n");
 
   try {
     const upstream = await fetch(`${AGENT_BASE}/agent/stock-chat/stream`, {
