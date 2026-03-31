@@ -150,6 +150,11 @@ export default function PriceChart({ data, scanDates = [], exchange = "US", symb
             }`}>
               {isUp ? "+" : ""}{change.toFixed(2)} ({isUp ? "+" : ""}{changePct.toFixed(2)}%)
             </span>
+            {period === "1D" && candleBars.length > 0 && (
+              <span className="text-xs text-gray-400">
+                {(candleBars[candleBars.length - 1].ts ?? candleBars[candleBars.length - 1].date ?? "").substring(0, 10)}
+              </span>
+            )}
           </div>
         )}
       </div>
