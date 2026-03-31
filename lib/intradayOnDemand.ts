@@ -14,7 +14,7 @@ import { getPool, type IntradayBar } from "./db";
 // Exchange → Yahoo suffix
 const YF_SUFFIX: Record<string, string> = {
   ASX: ".AX", HKEX: ".HK", HOSE: ".VN", SET: ".BK",
-  KLSE: ".KL", IDX: ".JK", LSE: ".L", SSE: ".SS", SZSE: ".SZ", TWSE: ".TW",
+  KLSE: ".KL", IDX: ".JK", LSE: ".L", SSE: ".SS", SZSE: ".SZ", TWSE: ".TW", SGX: ".SI",
 };
 
 // Exchange → per-market intraday table
@@ -25,6 +25,7 @@ const INTRADAY_TABLE: Record<string, string> = {
   IDX: "ohlcv_intraday_idx", SSE: "ohlcv_intraday_sse",
   SZSE: "ohlcv_intraday_szse", LSE: "ohlcv_intraday_lse",
   TWSE: "ohlcv_intraday_twse",
+  SGX: "ohlcv_intraday_sgx",
 };
 
 // Market timezone for converting UTC → local timestamps
@@ -35,6 +36,7 @@ const MARKET_TZ: Record<string, string> = {
   IDX: "Asia/Jakarta", SSE: "Asia/Shanghai",
   SZSE: "Asia/Shanghai", LSE: "Europe/London",
   TWSE: "Asia/Taipei",
+  SGX: "Asia/Singapore",
 };
 
 // In-memory lock to prevent concurrent fetches for the same ticker
