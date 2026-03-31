@@ -4,11 +4,11 @@ import { getAlertSummaryMap, getRecentRuns, getScannedTickerSet, getLatestPrices
 import { getLang } from "@/lib/getLang";
 import { loadTranslations } from "@/lib/i18n";
 import { t } from "@/lib/translations";
-import LiveScanProgress from "./components/LiveScanProgress";
-import TickerSearch from "./components/TickerSearch";
-import WatchlistButton from "./components/WatchlistButton";
-import StockViewToggle from "./components/StockViewToggle";
-import ScreenshotImport from "./components/ScreenshotImport";
+import LiveScanProgress from "../components/LiveScanProgress";
+import TickerSearch from "../components/TickerSearch";
+import WatchlistButton from "../components/WatchlistButton";
+import StockViewToggle from "../components/StockViewToggle";
+import ScreenshotImport from "../components/ScreenshotImport";
 
 export const dynamic = "force-dynamic";
 
