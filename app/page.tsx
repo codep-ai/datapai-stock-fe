@@ -354,25 +354,12 @@ export default async function HomePage() {
         <h2 className="text-3xl font-bold text-[#252525] mb-3">
           {tl(labels, "home_pricing_title", "Free Forever to Start")}
         </h2>
-        <p className="text-gray-500 mb-8 text-base max-w-xl mx-auto">
+        <p className="text-gray-500 mb-6 text-base max-w-xl mx-auto">
           {tl(labels, "home_pricing_sub", "No credit card required. Upgrade when you're ready for more AI signals, larger watchlists, and custom strategies.")}
         </p>
-        <div className="flex items-center justify-center gap-4 flex-wrap">
-          <div className="bg-white border-2 border-[#2e8b57] rounded-xl px-6 py-4 shadow-sm">
-            <div className="text-2xl font-bold text-[#2e8b57]">$0</div>
-            <div className="text-sm text-gray-500">{tl(labels, "home_pricing_free", "Signal Watch — Free forever")}</div>
-          </div>
-          <div className="bg-white border border-gray-200 rounded-xl px-6 py-4">
-            <div className="text-2xl font-bold text-gray-700">$49</div>
-            <div className="text-sm text-gray-500">{tl(labels, "home_pricing_individual", "Individual — Full AI suite")}</div>
-          </div>
-          <div className="bg-white border border-gray-200 rounded-xl px-6 py-4">
-            <div className="text-2xl font-bold text-gray-700">$299</div>
-            <div className="text-sm text-gray-500">{tl(labels, "home_pricing_pro", "Professional — All markets")}</div>
-          </div>
-        </div>
         <Link href="/pricing"
-          className="inline-block mt-6 text-[#2e8b57] font-semibold hover:underline text-sm">
+          className="inline-block px-8 py-3 rounded-xl font-bold text-white text-sm transition-all hover:brightness-110"
+          style={{ background: "#2e8b57" }}>
           {tl(labels, "home_pricing_cta", "View all plans")} →
         </Link>
       </section>
