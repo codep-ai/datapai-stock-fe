@@ -147,8 +147,8 @@ export default function CandlestickChart({ data, currency = "$", height = 320 }:
   const chartsRef = useRef<IChartApi[]>([]);
 
   const [chartType, setChartType] = useState<"line" | "candle">("line");
-  const [showMA, setShowMA] = useState(true);
-  const [showRSI, setShowRSI] = useState(true);
+  const [showMA, setShowMA] = useState(false);
+  const [showRSI, setShowRSI] = useState(false);
   const [showMACD, setShowMACD] = useState(false);
   const [showKDJ, setShowKDJ] = useState(false);
 
