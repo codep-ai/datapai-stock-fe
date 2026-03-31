@@ -783,6 +783,7 @@ export async function getLatestPricesForWatchlist(
 ): Promise<Record<string, TickerPrice>> {
   if (!items.length) return {};
   const symbols = items.map(i => i.symbol);
+  const exchanges = [...new Set(items.map(i => i.exchange))];
   // Simple: just read latest intraday bar per ticker.
   // The EOD pipeline inserts a closing bar (16:00) into ohlcv_intraday
   // after fetching the correct daily close from Yahoo, so this always
@@ -801,6 +802,7 @@ export async function getLatestPricesForWatchlist(
               ticker, close
        FROM datapai.prices
        WHERE ticker = ANY($1)
+         AND exchange = ANY($2)
          AND trade_date::date < CURRENT_DATE
        ORDER BY ticker, trade_date DESC
      )
@@ -814,7 +816,7 @@ export async function getLatestPricesForWatchlist(
             l.trade_date
      FROM latest l
      LEFT JOIN prev_eod pe ON pe.ticker = l.ticker`,
-    [symbols]
+    [symbols, exchanges]
   );
   const result: Record<string, TickerPrice> = {};
   for (const r of rows) result[r.ticker] = r;
