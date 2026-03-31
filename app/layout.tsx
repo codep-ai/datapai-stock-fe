@@ -239,6 +239,15 @@ export default async function RootLayout({
               <a href="https://platform.datap.ai/bi" target="_blank" rel="noopener noreferrer" className="text-[#8fbc8f] hover:text-[#a8d5a8] transition-colors">platform.datap.ai</a>
             </div>
 
+            {/* LLM Providers */}
+            <div className="flex items-center justify-center gap-6 mt-4 text-xs text-gray-600 flex-wrap">
+              <span className="text-gray-500 font-medium">Built on top LLM models:</span>
+              <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#10a37f]" />OpenAI GPT</span>
+              <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#d97757]" />Anthropic Claude</span>
+              <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#4285f4]" />Google Gemini</span>
+              <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#ff9900]" />AWS Bedrock</span>
+            </div>
+
             {/* Company info */}
             <div className="border-t border-gray-700 mt-6 pt-5 text-center space-y-1">
               <p className="text-gray-500 text-xs">
