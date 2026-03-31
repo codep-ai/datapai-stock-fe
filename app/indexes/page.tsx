@@ -322,7 +322,7 @@ export default function MarketsPage() {
 
             {/* ━━ Section 1: Global Indexes ━━ */}
             <section>
-              <SectionHeader icon="\u{1F30D}" titleKey="mkt_section_indexes" fallback="Global Indexes" labels={labels} />
+              <SectionHeader icon="" titleKey="mkt_section_indexes" fallback="Global Indexes" labels={labels} />
               <div className="space-y-6">
                 {grouped.map((g) => (
                   <div key={g.region}>
@@ -388,7 +388,7 @@ export default function MarketsPage() {
             {/* ━━ Section 2: Currency Rates ━━ */}
             {(data?.fx ?? []).length > 0 && (
               <section>
-                <SectionHeader icon="\u{1F4B1}" titleKey="mkt_section_fx" fallback="Currency Rates" labels={labels} />
+                <SectionHeader icon="" titleKey="mkt_section_fx" fallback="Currency Rates" labels={labels} />
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {(data?.fx ?? []).map((fx) => (
                     <div
@@ -417,7 +417,7 @@ export default function MarketsPage() {
             {/* ━━ Section 3: Commodities ━━ */}
             {(data?.commodities ?? []).length > 0 && (
               <section>
-                <SectionHeader icon="\u{1F6E2}\uFE0F" titleKey="mkt_section_commodities" fallback="Commodities" labels={labels} />
+                <SectionHeader icon="" titleKey="mkt_section_commodities" fallback="Commodities" labels={labels} />
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {(data?.commodities ?? []).map((c) => (
                     <div
@@ -445,7 +445,7 @@ export default function MarketsPage() {
             {/* ━━ Section 4: Crypto ━━ */}
             {(data?.crypto ?? []).length > 0 && (
               <section>
-                <SectionHeader icon="\u{20BF}" titleKey="mkt_section_crypto" fallback="Crypto" labels={labels} />
+                <SectionHeader icon="" titleKey="mkt_section_crypto" fallback="Crypto" labels={labels} />
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {(data?.crypto ?? []).map((c) => (
                     <div
