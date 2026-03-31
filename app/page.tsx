@@ -328,7 +328,7 @@ export default async function HomePage() {
             <div className="flex items-center justify-center gap-8 flex-wrap text-sm text-gray-500">
               <span className="flex items-center gap-2 font-medium">
                 <span className="w-2 h-2 rounded-full bg-[#10a37f]" />
-                OpenAI GPT-4o
+                OpenAI GPT
               </span>
               <span className="flex items-center gap-2 font-medium">
                 <span className="w-2 h-2 rounded-full bg-[#d97757]" />
