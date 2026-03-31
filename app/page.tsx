@@ -90,7 +90,7 @@ export default async function HomePage() {
 
           {/* Language support — same style as headline, left aligned */}
           <p className="text-lg md:text-xl text-white/80">
-            🌐 {tl(labels, "home_lang_title", "Speak Your Language")} — {tl(labels, "home_lang_sub", "Every AI report, signal, and chat — in your preferred language.")}
+            {tl(labels, "home_lang_title", "Speak Your Language")} — {tl(labels, "home_lang_sub", "Every AI report, signal, and chat — in your preferred language.")}
           </p>
 
           {/* Language pills — clickable, switches language */}
@@ -202,7 +202,7 @@ export default async function HomePage() {
               {tl(labels, "home_features_title", "What Makes Us Different")}
             </h2>
             <p className="text-gray-500 mt-2 text-base">
-              {tl(labels, "home_features_sub", "AI agents that read company websites, debate each other, and deliver verified signals.")}
+              {tl(labels, "home_features_sub", "TA, FA, Chart Analysis, Macro, and Website Intelligence agents read, debate, cross-validate, and deliver verified signals.")}
             </p>
           </div>
 
