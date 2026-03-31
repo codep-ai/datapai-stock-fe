@@ -87,7 +87,7 @@ export default async function TaiwanPage() {
         <div>
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-3xl font-bold text-[#252525]">
-              {t(labels, "section_twse_stocks")}
+              🇹🇼 {t(labels, "section_twse_stocks")}
               <span className="text-lg font-normal text-gray-400 ml-2">{t(labels, "section_twse_label")}</span>
             </h2>
             <div className="flex items-center gap-4 text-sm text-gray-400">
