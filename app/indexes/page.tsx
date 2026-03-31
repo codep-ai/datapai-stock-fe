@@ -124,6 +124,9 @@ const FX_FLAGS: Record<string, string> = {
   THB: "\u{1F1F9}\u{1F1ED}",
   USD: "\u{1F1FA}\u{1F1F8}",
   VND: "\u{1F1FB}\u{1F1F3}",
+  JPY: "\u{1F1EF}\u{1F1F5}",
+  TWD: "\u{1F1F9}\u{1F1FC}",
+  SGD: "\u{1F1F8}\u{1F1EC}",
 };
 
 const FX_NAMES: Record<string, string> = {
@@ -137,6 +140,9 @@ const FX_NAMES: Record<string, string> = {
   THB: "Thai Baht",
   USD: "US Dollar",
   VND: "Vietnamese Dong",
+  JPY: "Japanese Yen",
+  TWD: "Taiwan Dollar",
+  SGD: "Singapore Dollar",
 };
 
 /* ── Index region groups ── */
