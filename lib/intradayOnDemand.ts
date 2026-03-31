@@ -57,6 +57,11 @@ export async function fetchAndCacheIntraday(
 
   fetchingSet.add(key);
   try {
+    // China A-shares: route to Python backend (AKShare — better data, includes close bar)
+    if (exchange === "SSE" || exchange === "SZSE") {
+      return await fetchViaBackendApi(ticker, exchange);
+    }
+
     const suffix = YF_SUFFIX[exchange] ?? "";
     const yfSymbol = `${ticker}${suffix}`;
     const tz = MARKET_TZ[exchange] ?? "UTC";
@@ -160,6 +165,36 @@ export async function fetchAndCacheIntraday(
     fetchingSet.delete(key);
   }
 }
+
+/**
+ * Fetch intraday bars via Python backend API (used for China A-shares / AKShare).
+ * The backend fetches from AKShare and caches into DB automatically.
+ */
+async function fetchViaBackendApi(ticker: string, exchange: string): Promise<IntradayBar[]> {
+  const backendUrl = process.env.AGENT_BACKEND_BASE_URL || "http://localhost:8000";
+  try {
+    const res = await fetch(
+      `${backendUrl}/agent/intraday-bars?ticker=${encodeURIComponent(ticker)}&exchange=${encodeURIComponent(exchange)}`,
+      { signal: AbortSignal.timeout(15000) }
+    );
+    if (!res.ok) return [];
+    const json = await res.json();
+    if (!json.ok || !json.data) return [];
+
+    return (json.data as { ts: string; open: number; high: number; low: number; close: number; volume: number }[]).map((b) => ({
+      ts: b.ts,
+      open: Math.round(b.open * 100) / 100,
+      high: Math.round(b.high * 100) / 100,
+      low: Math.round(b.low * 100) / 100,
+      close: Math.round(b.close * 100) / 100,
+      volume: Math.round(b.volume),
+    }));
+  } catch (err) {
+    console.warn(`[intraday-backend] Error for ${ticker}/${exchange}:`, err);
+    return [];
+  }
+}
+
 
 /** Simple read from the intraday view (used when another request is already fetching). */
 async function readFromDB(ticker: string, exchange: string): Promise<IntradayBar[]> {
