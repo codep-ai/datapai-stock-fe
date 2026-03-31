@@ -132,11 +132,16 @@ export default async function HomePage() {
       <section className="max-w-6xl mx-auto px-6 py-16">
         <div className="text-center mb-10">
           <h2 className="text-3xl font-bold text-[#252525]">
-            {tl(labels, "home_markets_title", "From Wall Street to Southeast Asia")}
+            {tl(labels, "home_markets_title", "One Data + AI Platform")}
           </h2>
           <p className="text-gray-500 mt-2 text-base">
-            {tl(labels, "home_markets_sub", "Every market, one platform. Real-time prices, AI analysis, and alerts.")}
+            {tl(labels, "home_markets_sub", "From Wall Street to Southeast Asia — 12 markets, real-time prices, AI analysis, and alerts. All in one place.")}
           </p>
+          <Link href="/pricing"
+            className="inline-block mt-4 px-6 py-2.5 rounded-xl font-bold text-[#252525] text-sm transition-all hover:brightness-110"
+            style={{ background: "#fbbf24" }}>
+            {tl(labels, "home_pricing_cta", "View all plans")} →
+          </Link>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-12">
@@ -244,41 +249,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          PRICING CTA
-          ═══════════════════════════════════════════════════════════════════ */}
-      <section style={{ background: "#f8faf9" }} className="py-12 text-center">
-        <h2 className="text-3xl font-bold text-[#252525] mb-3">
-          {tl(labels, "home_pricing_title", "Free Forever to Start")}
-        </h2>
-        <p className="text-gray-500 mb-6 text-base max-w-xl mx-auto">
-          {tl(labels, "home_pricing_sub", "No credit card required. Upgrade when you're ready for more AI signals, larger watchlists, and custom strategies.")}
-        </p>
-        <Link href="/pricing"
-          className="inline-block px-8 py-3 rounded-xl font-bold text-[#252525] text-sm transition-all hover:brightness-110"
-          style={{ background: "#fbbf24" }}>
-          {tl(labels, "home_pricing_cta", "View all plans")} →
-        </Link>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════════════════
-          FINAL CTA
-          ═══════════════════════════════════════════════════════════════════ */}
-      <section className="w-full py-16 bg-[#252525]">
-        <div className="max-w-3xl mx-auto px-6 text-center space-y-6">
-          <h2 className="text-3xl md:text-4xl font-bold text-white">
-            {tl(labels, "home_final_title", "50,000+ Stocks Monitored by AI. Start Free Today.")}
-          </h2>
-          <p className="text-white/60 text-base">
-            {tl(labels, "home_final_sub", "Join investors across Asia-Pacific using AI to find opportunities faster.")}
-          </p>
-          <Link href="/register"
-            className="inline-block px-10 py-4 rounded-xl font-bold text-white text-lg transition-all hover:brightness-110 hover:-translate-y-0.5 shadow-lg"
-            style={{ background: "#fd8412" }}>
-            {tl(labels, "home_final_cta", "Create Free Account")} →
-          </Link>
-        </div>
-      </section>
     </div>
   );
 }
