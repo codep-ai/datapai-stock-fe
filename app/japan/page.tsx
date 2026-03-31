@@ -38,7 +38,7 @@ export default async function JapanPage() {
     <div>
       <div
         className="w-full flex flex-col justify-center"
-        style={{ background: "linear-gradient(45deg, #b71c1c, #e53935)", paddingTop: "28px", paddingBottom: "28px" }}
+        style={{ background: "linear-gradient(45deg, seagreen, darkseagreen)", paddingTop: "28px", paddingBottom: "28px" }}
       >
         <div className="max-w-6xl mx-auto px-6 space-y-3">
           <h1 className="text-2xl font-bold text-white">
@@ -65,7 +65,7 @@ export default async function JapanPage() {
           <div className="flex gap-3 items-center flex-wrap relative">
             <Link href="/alerts"
               className="px-6 py-2.5 rounded-lg font-bold uppercase tracking-wide transition-all hover:-translate-y-0.5"
-              style={{ fontSize: "0.9rem", background: "#fff", color: "#b71c1c" }}>
+              style={{ fontSize: "0.9rem", background: "#fff", color: "#2e8b57" }}>
               {t(labels, "hero_view_alerts")} →
             </Link>
             <LiveScanProgress exchange="TSE" heroButton labels={labels} />
@@ -91,7 +91,7 @@ export default async function JapanPage() {
               <span className="text-lg font-normal text-gray-400 ml-2">{t(labels, "section_tse_label")}</span>
             </h2>
             <div className="flex items-center gap-4 text-sm text-gray-400">
-              <Link href="/alerts" className="hover:underline" style={{ color: "#b71c1c" }}>{t(labels, "hero_view_alerts")} →</Link>
+              <Link href="/alerts" className="hover:underline" style={{ color: "#2e8b57" }}>{t(labels, "hero_view_alerts")} →</Link>
             </div>
           </div>
 
@@ -121,7 +121,7 @@ export default async function JapanPage() {
                   return (
                     <div key={tk.symbol} className="relative rounded-xl px-4 pt-6 pb-4 transition-all duration-200 group shadow-sm hover:-translate-y-0.5" style={cardStyle}>
                       {hasAlert && (
-                        <span className="absolute -top-2.5 -right-2.5 text-xs font-bold px-2 py-0.5 rounded-full shadow" style={{ background: "#b71c1c", color: "#fff" }}>
+                        <span className="absolute -top-2.5 -right-2.5 text-xs font-bold px-2 py-0.5 rounded-full shadow" style={{ background: "#2e8b57", color: "#fff" }}>
                           {analysis.alert_score > 0 ? "+" : ""}{analysis.alert_score.toFixed(1)}
                         </span>
                       )}
@@ -129,7 +129,7 @@ export default async function JapanPage() {
                         <WatchlistButton compact symbol={tk.symbol} exchange="TSE" name={tk.name} />
                       </div>
                       <Link href={`/ticker/${tk.symbol}?exchange=TSE`} className="block pr-6">
-                        <div className="font-bold text-base group-hover:opacity-80" style={{ color: "#b71c1c" }}>{tk.symbol}</div>
+                        <div className="font-bold text-base group-hover:opacity-80" style={{ color: "#2e8b57" }}>{tk.symbol}</div>
                         <div className="text-gray-400 text-xs mt-0.5 truncate">{tk.name}</div>
                         <div className="mt-2 space-y-0.5">
                           {closeNum !== null && !isNaN(closeNum) ? (
@@ -188,7 +188,7 @@ export default async function JapanPage() {
                         <tr key={tk.symbol} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors" style={{ background: rowBg }}>
                           <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
                           <td className="px-4 py-3">
-                            <Link href={`/ticker/${tk.symbol}?exchange=TSE`} className="font-bold hover:opacity-80" style={{ color: "#b71c1c" }}>{tk.symbol}</Link>
+                            <Link href={`/ticker/${tk.symbol}?exchange=TSE`} className="font-bold hover:opacity-80" style={{ color: "#2e8b57" }}>{tk.symbol}</Link>
                           </td>
                           <td className="px-4 py-3 text-gray-500 truncate max-w-[200px]">{tk.name}</td>
                           <td className="px-4 py-3 text-right font-semibold text-gray-700">
