@@ -132,8 +132,8 @@ export default async function HomePage() {
               {tl(labels, "home_cta_explore", "Explore Markets")}
             </Link>
             <Link href="/pricing"
-              className="px-8 py-3.5 rounded-xl font-bold text-[#252525] text-base transition-all hover:brightness-110 hover:-translate-y-0.5 shadow-lg"
-              style={{ background: "#fbbf24" }}>
+              className="px-8 py-3.5 rounded-xl font-bold text-white text-base transition-all hover:brightness-110 hover:-translate-y-0.5 shadow-lg"
+              style={{ background: "#fd8412" }}>
               {tl(labels, "home_pricing_cta", "View all plans")}
             </Link>
           </div>
