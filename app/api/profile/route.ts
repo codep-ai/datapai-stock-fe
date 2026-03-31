@@ -43,7 +43,7 @@ export async function PUT(req: NextRequest) {
     "portfolio_size", "portfolio_tickers",
     "analysis_preference", "preferred_lang",
     "response_style", "show_risk_warnings", "esg_only", "tax_context",
-    "screener_defaults", "onboarding_completed", "onboarding_step",
+    "screener_defaults", "onboarding_completed", "onboarding_step", "country",
   ];
   const sanitised: ProfileUpdate = {};
   for (const key of allowed) {

@@ -35,8 +35,39 @@ const STRATEGY_OPTIONS = [
 ];
 
 const EXCHANGE_OPTIONS = [
-  { value: "US",  label: "🇺🇸 US Markets", desc: "NASDAQ / NYSE — Apple, NVDA, Tesla…" },
-  { value: "ASX", label: "🇦🇺 ASX",         desc: "Australian Securities Exchange — BHP, CBA, CSL…" },
+  { value: "US",   label: "🇺🇸 US Markets",  desc: "NASDAQ / NYSE — Apple, NVDA, Tesla…" },
+  { value: "ASX",  label: "🇦🇺 Australia",    desc: "ASX — BHP, CBA, CSL…" },
+  { value: "HKEX", label: "🇭🇰 Hong Kong",    desc: "HKEX — Tencent, AIA, HSBC…" },
+  { value: "TWSE", label: "🇹🇼 Taiwan",       desc: "TWSE — TSMC, Hon Hai, MediaTek…" },
+  { value: "SGX",  label: "🇸🇬 Singapore",    desc: "SGX — DBS, OCBC, Singtel…" },
+  { value: "SSE",  label: "🇨🇳 China (SSE)",  desc: "Shanghai — Moutai, PetroChina…" },
+  { value: "SZSE", label: "🇨🇳 China (SZSE)", desc: "Shenzhen — BYD, Midea…" },
+  { value: "HOSE", label: "🇻🇳 Vietnam",      desc: "HOSE — Vingroup, Vietcombank…" },
+  { value: "SET",  label: "🇹🇭 Thailand",     desc: "SET — PTT, SCB, CP ALL…" },
+  { value: "KLSE", label: "🇲🇾 Malaysia",     desc: "Bursa — Maybank, CIMB, Petronas…" },
+  { value: "IDX",  label: "🇮🇩 Indonesia",    desc: "IDX — BCA, Telkom, Astra…" },
+  { value: "LSE",  label: "🇬🇧 United Kingdom", desc: "LSE — Shell, AstraZeneca, HSBC…" },
+];
+
+const COUNTRY_OPTIONS = [
+  { value: "AU", label: "🇦🇺 Australia" },
+  { value: "SG", label: "🇸🇬 Singapore" },
+  { value: "HK", label: "🇭🇰 Hong Kong" },
+  { value: "TW", label: "🇹🇼 Taiwan" },
+  { value: "VN", label: "🇻🇳 Vietnam" },
+  { value: "TH", label: "🇹🇭 Thailand" },
+  { value: "MY", label: "🇲🇾 Malaysia" },
+  { value: "ID", label: "🇮🇩 Indonesia" },
+  { value: "CN", label: "🇨🇳 China" },
+  { value: "JP", label: "🇯🇵 Japan" },
+  { value: "KR", label: "🇰🇷 South Korea" },
+  { value: "US", label: "🇺🇸 United States" },
+  { value: "GB", label: "🇬🇧 United Kingdom" },
+  { value: "NZ", label: "🇳🇿 New Zealand" },
+  { value: "CA", label: "🇨🇦 Canada" },
+  { value: "IN", label: "🇮🇳 India" },
+  { value: "PH", label: "🇵🇭 Philippines" },
+  { value: "OTHER", label: "🌍 Other" },
 ];
 
 const SIZE_OPTIONS = [
@@ -158,6 +189,7 @@ export default function OnboardingPage() {
   const [exchanges,  setExchanges]  = useState<string[]>(["US"]);
   const [size,       setSize]       = useState("RETAIL");
   const [analysis,   setAnalysis]   = useState<string[]>([]);   // multi-select (stored as "TA+FA" etc.)
+  const [country,    setCountry]    = useState("");
   const [lang,       setLang]       = useState("en");
   const [style,      setStyle]      = useState("BALANCED");
 
@@ -165,7 +197,7 @@ export default function OnboardingPage() {
     if (step === 1) return !!risk;
     if (step === 2) return horizons.length > 0;
     if (step === 3) return strategies.length > 0;
-    if (step === 4) return exchanges.length > 0 && !!size;
+    if (step === 4) return !!country && exchanges.length > 0 && !!size;
     if (step === 5) return analysis.length > 0;
     return true; // steps 6,7 have defaults
   };
@@ -192,6 +224,7 @@ export default function OnboardingPage() {
           analysis_preference: analysis.join("+") || "MIX",
           preferred_lang:      lang,
           response_style:      style,
+          country:             country || null,
           onboarding_completed: true,
           onboarding_step:      TOTAL,
         }),
@@ -260,12 +293,21 @@ export default function OnboardingPage() {
             </>
           )}
 
-          {/* Step 4 — Markets + size */}
+          {/* Step 4 — Country + Markets + size */}
           {step === 4 && (
             <>
-              <StepHeader step={4} title="Markets & portfolio size?"
-                sub="Helps surface the most relevant stocks and calibrate position-sizing advice." />
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Markets (select all you trade)</p>
+              <StepHeader step={4} title="Where are you based?"
+                sub="Helps us show relevant markets, tax context and local regulations." />
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Your country</p>
+              <select value={country} onChange={e => setCountry(e.target.value)}
+                className="w-full border-2 rounded-xl px-4 py-3 text-sm font-medium text-gray-900 mb-4 transition-all focus:outline-none focus:border-[#2e8b57]"
+                style={{ borderColor: country ? "#2e8b57" : "#e5e7eb", background: country ? "#f0fdf4" : "white" }}>
+                <option value="">Select your country…</option>
+                {COUNTRY_OPTIONS.map(c => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Markets you follow (select all)</p>
               <CheckCards options={EXCHANGE_OPTIONS} value={exchanges} onChange={setExchanges} />
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 mt-4">Portfolio size</p>
               <RadioCards options={SIZE_OPTIONS} value={size} onChange={setSize} />
