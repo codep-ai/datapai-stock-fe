@@ -540,11 +540,18 @@ export default function GlobalCopilot({ lang = "en" }: { lang?: string }) {
                     );
                   })()}
                   {msg.content.includes("[ACTION:REGISTER]") && (
-                    <a href="/register"
-                      className="mt-2 inline-block px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all hover:brightness-110"
-                      style={{ background: "#fd8412" }}>
-                      Create free account →
-                    </a>
+                    <div className="mt-2 flex gap-2">
+                      <a href="/register"
+                        className="inline-block px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all hover:brightness-110"
+                        style={{ background: "#fd8412" }}>
+                        Register free →
+                      </a>
+                      <a href="/login"
+                        className="inline-block px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:brightness-110"
+                        style={{ background: "#2e8b57", color: "#fff" }}>
+                        Login
+                      </a>
+                    </div>
                   )}
                   {msg.content.includes("[ACTION:UPGRADE]") && (
                     <a href="/pricing"
