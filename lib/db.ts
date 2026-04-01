@@ -792,19 +792,20 @@ export async function getLatestPricesForWatchlist(
   const rows = await q<TickerPrice>(
     `WITH latest AS (
        SELECT DISTINCT ON (ticker)
-              ticker, close, ts::text AS trade_date
+              ticker, close, ts::text AS trade_date, ts::date AS bar_date
        FROM datapai.ohlcv_intraday
        WHERE ticker = ANY($1)
        ORDER BY ticker, ts DESC
      ),
      prev_eod AS (
-       SELECT DISTINCT ON (ticker)
-              ticker, close
-       FROM datapai.prices
-       WHERE ticker = ANY($1)
-         AND exchange = ANY($2)
-         AND trade_date::date < CURRENT_DATE
-       ORDER BY ticker, trade_date DESC
+       SELECT DISTINCT ON (p.ticker)
+              p.ticker, p.close
+       FROM datapai.prices p
+       INNER JOIN latest l ON l.ticker = p.ticker
+       WHERE p.ticker = ANY($1)
+         AND p.exchange = ANY($2)
+         AND p.trade_date::date < l.bar_date
+       ORDER BY p.ticker, p.trade_date DESC
      )
      SELECT l.ticker,
             l.close,
