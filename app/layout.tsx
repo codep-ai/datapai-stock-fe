@@ -197,7 +197,7 @@ export default async function RootLayout({
               Suite 2/200 Mona Vale Rd, St Ives NSW 2075 &middot;{" "}
               <a href="mailto:info@datap.ai" className="text-gray-400 hover:text-gray-600 transition-colors">info@datap.ai</a>
             </p>
-            <p className="text-gray-300 text-[10px] leading-relaxed max-w-3xl mx-auto pt-2">
+            <p className="text-gray-400 text-xs font-semibold leading-relaxed max-w-3xl mx-auto pt-2">
               {t(labels, "asic_warning_body")} {t(labels, "disclaimer_body")}
             </p>
           </div>
