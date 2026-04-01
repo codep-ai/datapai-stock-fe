@@ -486,15 +486,6 @@ export default async function WhyDatapaiPage() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          DISCLAIMER
-          ═══════════════════════════════════════════════════════════════════ */}
-      <section className="max-w-5xl mx-auto px-6 py-12">
-        <p className="text-sm leading-relaxed font-semibold" style={{ color: "#000" }}>
-          The information on this website is general information only and does not take into account your objectives, financial situation or needs. Before acting on any information, you should consider its appropriateness and consider seeking advice from a qualified financial advisor. Any AI-generated signals, scores, or recommendations (including BUY, SELL, HOLD) are produced by automated systems and may be inaccurate or outdated. Past performance is not indicative of future results. Investing carries risk — you may lose some or all of your investment. AWSME Pty Ltd does not hold an AFSL and is not authorised to provide personal financial advice. All data, signals, scores, and AI-generated content on DataP.ai are for educational and informational purposes only and do NOT constitute financial advice, investment recommendations, or solicitation to buy or sell securities. Technical indicators are computed from historical price data and backtested against past performance — past performance does not guarantee future results. Always conduct your own research and consult a qualified financial advisor before making investment decisions. DataP.ai and its operators are not responsible for any trading losses.
-        </p>
-      </section>
-
       {/* Bottom spacing */}
       <div className="h-8" />
     </div>
