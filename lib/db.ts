@@ -703,6 +703,11 @@ export async function updateUserPlan(
     `UPDATE datapai.users SET plan=$1, plan_status=$2, plan_expires_at=$3 WHERE id=$4`,
     [plan, planStatus, planExpiresAt, userId]
   );
+  // Sync to user_profiles (chat system reads plan from here for rate limits)
+  await exec(
+    `UPDATE datapai.user_profiles SET plan=$1 WHERE user_id=$2`,
+    [plan, userId]
+  );
 }
 
 export async function getUserByStripeCustomerId(stripeCustomerId: string): Promise<User | null> {
