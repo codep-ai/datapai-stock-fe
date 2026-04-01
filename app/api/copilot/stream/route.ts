@@ -50,7 +50,13 @@ export async function POST(req: Request) {
   // Detect ticker in message → fetch live price from Yahoo → inject into context
   let verifiedPrice = "";
   try {
-    const match = message.toUpperCase().match(/\b([A-Z0-9]{1,6})(?:\.(ASX|SI|TW|T|HK|VN|BK|KL|JK|L|SS|SZ))?\b/);
+    // Find ticker: last word that looks like a ticker (skip common English words)
+    const skip = new Set(["WHAT","WHATS","THE","PRICE","OF","IS","FOR","HOW","MUCH","DOES","ABOUT","TELL","ME","SHOW","GET","AND","OR","IN","ON","AT","TO","A","AN","IT","DO","CAN","YOU","MY","HI","HELLO"]);
+    const words = message.toUpperCase().replace(/[^A-Z0-9.\s]/g, "").split(/\s+/);
+    const candidates = words.filter(w => w.length >= 2 && w.length <= 6 && !skip.has(w));
+    // Prefer words with exchange suffix (BHP.ASX) or last candidate
+    const tickerWord = candidates.find(w => w.includes(".")) || candidates[candidates.length - 1] || "";
+    const match = tickerWord.match(/^([A-Z0-9]{1,6})(?:\.(ASX|SI|TW|T|HK|VN|BK|KL|JK|L|SS|SZ))?$/);
     if (match && match[1].length >= 2) {
       const ticker = match[1];
       const exSuffix = match[2] || "";
