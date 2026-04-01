@@ -193,9 +193,9 @@ export default async function RootLayout({
               <a href="/terms" className="text-gray-500 hover:text-gray-700 transition-colors">Terms</a> &middot;{" "}
               <a href="/privacy" className="text-gray-500 hover:text-gray-700 transition-colors">Privacy</a>
             </p>
-            <p className="text-gray-300 text-xs">
+            <p className="text-gray-400 text-xs font-semibold">
               Suite 2/200 Mona Vale Rd, St Ives NSW 2075 &middot;{" "}
-              <a href="mailto:info@datap.ai" className="text-gray-400 hover:text-gray-600 transition-colors">info@datap.ai</a>
+              <a href="mailto:info@datap.ai" className="text-gray-500 hover:text-gray-700 transition-colors">info@datap.ai</a>
             </p>
             <p className="text-gray-400 text-xs font-semibold leading-relaxed max-w-3xl mx-auto pt-2">
               {t(labels, "asic_warning_body")} {t(labels, "disclaimer_body")}
