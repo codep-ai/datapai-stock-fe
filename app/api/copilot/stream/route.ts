@@ -77,7 +77,16 @@ export async function POST(req: Request) {
           const cur = meta.currency ?? "USD";
           const exn = meta.exchangeName ?? "";
           const state = meta.marketState === "REGULAR" ? "Live" : "Close";
-          verifiedPrice = `[VERIFIED PRICE from Yahoo Finance — use this exact data, do not use Google Search for price]\n${ticker}: ${cur} ${p.toFixed(2)} ${chg >= 0 ? "+" : ""}${chg.toFixed(2)} (${chg >= 0 ? "+" : ""}${pct.toFixed(2)}%) · ${exn} · ${state}\n`;
+          // Map Yahoo exchange names to our standard codes
+          const exMap: Record<string, string> = {
+            NMS: "US", NYQ: "US", NGM: "US", NCM: "US", ASX: "ASX",
+            HKG: "HKEX", TAI: "TWSE", SES: "SGX", JPX: "TSE",
+            SHH: "SSE", SHZ: "SZSE", LON: "LSE", SET: "SET",
+            KLS: "KLSE", JKT: "IDX", VNM: "HOSE",
+          };
+          const exCode = exMap[exn] || exn;
+          const displayTicker = `${ticker}.${exCode}`;
+          verifiedPrice = `[VERIFIED PRICE from Yahoo Finance — use this exact data, do not use Google Search for price]\n${displayTicker}: ${cur} ${p.toFixed(2)} ${chg >= 0 ? "+" : ""}${chg.toFixed(2)} (${chg >= 0 ? "+" : ""}${pct.toFixed(2)}%) · ${state}\n`;
         }
       }
     }
