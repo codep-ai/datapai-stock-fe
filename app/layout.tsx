@@ -70,6 +70,7 @@ export default async function RootLayout({
 
             {/* Centre: page nav */}
             <nav className="flex items-center gap-0.5 flex-1 justify-center">
+              <span data-tour="nav-exchanges">
               <MarketDropdown
                 buttonLabel={t(labels, "nav_exchanges")}
                 markets={[
@@ -87,6 +88,7 @@ export default async function RootLayout({
                   { href: "/uk", label: t(labels, "nav_uk"), flag: "🇬🇧" },
                 ]}
               />
+              </span>
               <a href="/watchlist" data-tour="nav-watchlist" className="text-gray-500 hover:text-[#2e8b57] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
                 style={{ fontSize: "0.92rem" }}>{t(labels, "nav_watchlist")}</a>
               <a href="/intel" data-tour="nav-ai" className="text-gray-500 hover:text-[#6366f1] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"

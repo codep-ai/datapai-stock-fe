@@ -55,7 +55,16 @@ const STEPS: TourStep[] = [
     position: "bottom",
     arrow: "end",
   },
-  // Step 4: Watchlist (consolidated)
+  // Step 4: Browse markets
+  {
+    target: "nav-exchanges",
+    titleKey: "tour_exchanges_title",
+    descKey: "tour_exchanges_desc",
+    fallbackTitle: "Browse 13 Markets",
+    fallbackDesc: "Explore stocks across 13 Asia-Pacific exchanges — US, Australia, Hong Kong, Japan, Taiwan, Singapore, China, Vietnam, Thailand, Malaysia, Indonesia, UK, and India. All in one platform.",
+    position: "bottom",
+  },
+  // Step 5: Watchlist (consolidated)
   {
     target: "nav-watchlist",
     titleKey: "tour_watchlist_combined_title",
