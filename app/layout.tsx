@@ -128,11 +128,11 @@ export default async function RootLayout({
               <LangToggle current={lang} languages={languages} />
 
               {/* Take a Tour — visible to everyone */}
-              <a href="#tour"
+              <button type="button"
                 className="text-gray-400 hover:text-[#2e8b57] transition-colors font-medium text-sm px-3 py-1.5 rounded-md hover:bg-gray-50"
                 data-start-tour="true">
                 {t(labels, "nav_take_tour") || "Take a Tour"}
-              </a>
+              </button>
 
               {user ? (
                 <>
