@@ -93,7 +93,7 @@ export default async function HomePage() {
           <p className="text-lg md:text-xl text-white/80">
             {tl(labels, "home_hero_sub", "12 markets. 50,000+ stocks. 8 languages.")}
             <br />
-            {tl(labels, "home_hero_sub2", "Powered by AI agents that never sleep.")}
+            {tl(labels, "home_hero_sub2", "A global stock research platform with local AI experience.")}
           </p>
 
           {/* Language support — same style as headline, left aligned */}

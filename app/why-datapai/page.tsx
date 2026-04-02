@@ -116,7 +116,7 @@ export default async function WhyDatapaiPage() {
             {tl(labels, "why_hero_headline", "AI Stock Research Designed for Verified Market Data")}
           </h1>
           <p className="text-lg md:text-xl text-white/80 max-w-3xl">
-            {tl(labels, "why_hero_sub", "13 markets. 8 languages. Real-time prices cross-checked against Google Finance.")}
+            {tl(labels, "why_hero_sub", "A global stock research platform with local AI experience. 13 markets. 8 languages. Real-time prices cross-checked against Google Finance.")}
           </p>
 
           {/* CTA buttons */}
