@@ -2,6 +2,8 @@ import Link from "next/link";
 import { getLang } from "@/lib/getLang";
 import { loadTranslations } from "@/lib/i18n";
 import { t } from "@/lib/translations";
+import { getCommonConfig } from "@/lib/db";
+import HomepageTourTrigger from "./components/HomepageTourTrigger";
 
 export const dynamic = "force-dynamic";
 
@@ -66,10 +68,16 @@ function tl(labels: Record<string, string>, key: string, fallback: string): stri
 
 export default async function HomePage() {
   const lang = await getLang();
-  const labels = await loadTranslations(lang);
+  const [labels, tourFlag] = await Promise.all([
+    loadTranslations(lang),
+    getCommonConfig("tour", "homepage_tour_enabled", "true"),
+  ]);
+  const tourEnabled = tourFlag === "true";
 
   return (
     <div>
+      {/* Auto-start tour for first-time visitors (controlled by DB config) */}
+      <HomepageTourTrigger enabled={tourEnabled} />
       {/* ═══════════════════════════════════════════════════════════════════
           HERO — only green block on the page
           ═══════════════════════════════════════════════════════════════════ */}

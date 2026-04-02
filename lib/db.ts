@@ -1216,3 +1216,16 @@ export async function getPricingTier(tierId: string, region: string): Promise<Pr
   }
   return null;
 }
+
+// ─── Common config (DB-driven feature flags) ──────────────────────────────
+
+export async function getCommonConfig(configType: string, configKey: string, defaultValue: string = ""): Promise<string> {
+  const rows = await q<{ config_value: string }>(
+    `SELECT config_value FROM datapai.sys_common_config
+     WHERE config_type = $1 AND config_key = $2
+     AND (effective_to IS NULL OR effective_to >= CURRENT_DATE)
+     LIMIT 1`,
+    [configType, configKey]
+  );
+  return rows[0]?.config_value ?? defaultValue;
+}

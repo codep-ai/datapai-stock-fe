@@ -122,6 +122,20 @@ export default function OnboardingTour({ labels, force, autoShow }: Props) {
     }
   }, [force, autoShow]);
 
+  // Listen for "Take a Tour" button clicks (nav bar + homepage auto-trigger)
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      const target = (e.target as HTMLElement).closest("[data-start-tour]");
+      if (target) {
+        e.preventDefault();
+        setStep(0);
+        setActive(true);
+      }
+    };
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, []);
+
   // Position the tooltip relative to the target element
   const positionTooltip = useCallback(() => {
     if (!active) return;
