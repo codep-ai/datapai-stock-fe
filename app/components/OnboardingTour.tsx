@@ -26,78 +26,70 @@ interface TourStep {
 }
 
 const STEPS: TourStep[] = [
-  // Step 1: AI Copilot — most powerful, easy to miss
   {
     target: "copilot-bubble",
     titleKey: "tour_copilot_title",
     descKey: "tour_copilot_desc",
-    fallbackTitle: "👋 Meet Your AI Copilot",
-    fallbackDesc: "A global stock research platform with local AI experience. Ask any stock question and get answers in your own language — prices, company names, analysis, and alerts all localized. Supports English, 中文, 日本語, 한국어, Tiếng Việt, ภาษาไทย, Bahasa Melayu, and Bahasa Indonesia.",
+    fallbackTitle: "👋 AI Copilot",
+    fallbackDesc: "Ask any stock question in your preferred language. Prices, company names, and analysis — all localized.",
     position: "top",
     arrow: "end",
   },
-  // Step 2: Why Us — core value proposition
   {
     target: "nav-why-us",
     titleKey: "tour_why_us_title",
     descKey: "tour_why_us_desc",
-    fallbackTitle: "Why DataP.ai?",
-    fallbackDesc: "See how we compare. Accurate real-time stock data cross-checked against Google Finance, powered by the latest AI technology, available in 8 native languages across 13 Asia-Pacific markets. Our benchmark results speak for themselves.",
+    fallbackTitle: "Why Us?",
+    fallbackDesc: "See how our data compares with other AI platforms. Benchmark results and methodology included.",
     position: "bottom",
   },
-  // Step 3: Language switcher
   {
     target: "lang-toggle",
     titleKey: "tour_lang_title",
     descKey: "tour_lang_desc",
-    fallbackTitle: "Switch Language",
-    fallbackDesc: "Choose your preferred language here. The entire platform — AI Copilot, stock data, labels, company names, and alerts — will respond in your language. Supports: English, 中文, 繁體中文, 日本語, 한국어, Tiếng Việt, ภาษาไทย, Bahasa Melayu.",
+    fallbackTitle: "Language",
+    fallbackDesc: "Switch language here. The platform responds in your chosen language — 8 supported.",
     position: "bottom",
     arrow: "end",
   },
-  // Step 4: Browse markets
   {
     target: "nav-exchanges",
     titleKey: "tour_exchanges_title",
     descKey: "tour_exchanges_desc",
-    fallbackTitle: "Browse 13 Markets",
-    fallbackDesc: "Explore stocks across 13 Asia-Pacific exchanges — US, Australia, Hong Kong, Japan, Taiwan, Singapore, China, Vietnam, Thailand, Malaysia, Indonesia, UK, and India. All in one platform.",
+    fallbackTitle: "Exchanges",
+    fallbackDesc: "Browse stocks across 13 Asia-Pacific markets from one platform.",
     position: "bottom",
   },
-  // Step 5: Watchlist (consolidated)
   {
     target: "nav-watchlist",
     titleKey: "tour_watchlist_combined_title",
     descKey: "tour_watchlist_combined_desc",
-    fallbackTitle: "Your Watchlist",
-    fallbackDesc: "Add any stock to your watchlist by clicking the star icon. Track prices, daily changes, and AI alerts — all in one place. Your watchlist feeds the AI Copilot for personalised insights.",
+    fallbackTitle: "Watchlist",
+    fallbackDesc: "Star any stock to track it. See prices, changes, and AI insights in one place.",
     position: "bottom",
   },
-  // Step 6: AI Analysis
   {
     target: "nav-ai",
     titleKey: "tour_nav_ai_title",
     descKey: "tour_nav_ai_desc",
     fallbackTitle: "AI Analysis",
-    fallbackDesc: "Deep-dive into any stock with our AI agents. Get fundamental, technical, and macro analysis in your language.",
+    fallbackDesc: "Fundamental, technical, and macro analysis powered by multiple AI agents.",
     position: "bottom",
   },
-  // Step 7: Screener
   {
     target: "nav-screener",
     titleKey: "tour_nav_screener_title",
     descKey: "tour_nav_screener_desc",
-    fallbackTitle: "Stock Screener",
-    fallbackDesc: "Find actionable buy and sell candidates filtered by our AI scoring system. Updated daily for each market.",
+    fallbackTitle: "Screener",
+    fallbackDesc: "Explore buy and sell candidates filtered by AI scoring. Updated daily.",
     position: "bottom",
   },
-  // Step 8: Studio
   {
     target: "nav-studio",
     titleKey: "tour_nav_studio_title",
     descKey: "tour_nav_studio_desc",
     fallbackTitle: "AI Studio",
-    fallbackDesc: "Create your own custom AI strategies. Define rules, backtest, and let AI run your analysis automatically.",
+    fallbackDesc: "Build and backtest your own AI strategies with historical data.",
     position: "bottom",
   },
 ];
