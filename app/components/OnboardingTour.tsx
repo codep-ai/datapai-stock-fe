@@ -32,7 +32,7 @@ const STEPS: TourStep[] = [
     titleKey: "tour_copilot_title",
     descKey: "tour_copilot_desc",
     fallbackTitle: "👋 Meet Your AI Copilot",
-    fallbackDesc: "Global markets, local language. Ask any stock question and get answers in your own language — prices, company names, analysis, and alerts all localized. Supports English, 中文, 日本語, 한국어, Tiếng Việt, ภาษาไทย, Bahasa Melayu, and Bahasa Indonesia.",
+    fallbackDesc: "A global stock platform with local experience. Ask any stock question and get answers in your own language — prices, company names, analysis, and alerts all localized. Supports English, 中文, 日本語, 한국어, Tiếng Việt, ภาษาไทย, Bahasa Melayu, and Bahasa Indonesia.",
     position: "top",
     arrow: "end",
   },
