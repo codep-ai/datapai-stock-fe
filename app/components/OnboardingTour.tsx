@@ -57,7 +57,7 @@ const STEPS: TourStep[] = [
     titleKey: "tour_exchanges_title",
     descKey: "tour_exchanges_desc",
     fallbackTitle: "Exchanges",
-    fallbackDesc: "Browse stocks across 13 Asia-Pacific markets from one platform.",
+    fallbackDesc: "Browse stocks across 13 markets — from the US and UK to Asia-Pacific — all in one platform.",
     position: "bottom",
   },
   {
