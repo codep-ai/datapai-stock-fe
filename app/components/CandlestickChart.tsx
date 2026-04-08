@@ -37,6 +37,30 @@ const MARKET_HOURS: Record<string, { open: [number, number]; close: [number, num
   TSE:  { open: [9, 0],   close: [15, 0] },
 };
 
+// Lunch break per exchange (local time) — bars during this window are filtered out
+const LUNCH_BREAK: Record<string, { start: [number, number]; end: [number, number] }> = {
+  SSE:  { start: [11, 30], end: [13, 0] },
+  SZSE: { start: [11, 30], end: [13, 0] },
+  HKEX: { start: [12, 0],  end: [13, 0] },
+  TSE:  { start: [11, 30], end: [12, 30] },
+};
+
+/** Filter out intraday bars that fall within the lunch break window */
+function filterLunchBreak(bars: Bar[], ex: string): Bar[] {
+  const lb = LUNCH_BREAK[ex];
+  if (!lb) return bars;
+  const lbStartMin = lb.start[0] * 60 + lb.start[1];
+  const lbEndMin = lb.end[0] * 60 + lb.end[1];
+  return bars.filter((b) => {
+    const ts = b.ts || b.date || "";
+    if (ts.length < 16) return true; // daily bar, keep
+    const hh = parseInt(ts.substring(11, 13), 10);
+    const mm = parseInt(ts.substring(14, 16), 10);
+    const totalMin = hh * 60 + mm;
+    return totalMin < lbStartMin || totalMin >= lbEndMin;
+  });
+}
+
 // ── TA computation helpers ───────────────────────────────────────────────
 
 function sma(closes: number[], period: number): (number | null)[] {
@@ -178,13 +202,15 @@ export default function CandlestickChart({ data, currency = "$", height = 320, e
     if (!mainRef.current || data.length === 0) return;
 
     const isDaily = !!(data[0]?.date && data[0].date.length === 10);
+    // Filter lunch break bars for markets that have midday closure
+    const filteredData = isDaily ? data : filterLunchBreak(data, exchange || "US");
     // For intraday: timestamps are market-local (no timezone), treat as UTC
     // so lightweight-charts displays the local market time on the x-axis
     const toTime = (d: Bar) => isDaily
       ? (d.date as string) as any
       : (Math.floor(new Date((d.ts || d.date || "") + "Z").getTime() / 1000) as any);
 
-    const closes = data.map((d) => d.close);
+    const closes = filteredData.map((d) => d.close);
 
     // ── Shared chart options ──────────────────────────────────────────
     const sharedOpts = {
@@ -205,7 +231,7 @@ export default function CandlestickChart({ data, currency = "$", height = 320, e
 
     // Price series: line or candle
     if (chartType === "candle") {
-      const candleData = data.map((d) => ({ time: toTime(d), open: d.open, high: d.high, low: d.low, close: d.close }));
+      const candleData = filteredData.map((d) => ({ time: toTime(d), open: d.open, high: d.high, low: d.low, close: d.close }));
       const candleSeries = mainChart.addSeries(CandlestickSeries, {
         upColor: "#10b981", downColor: "#ef4444",
         borderDownColor: "#ef4444", borderUpColor: "#10b981",
@@ -213,7 +239,7 @@ export default function CandlestickChart({ data, currency = "$", height = 320, e
       });
       candleSeries.setData(candleData);
     } else {
-      const lineData = data.map((d) => ({ time: toTime(d), value: d.close }));
+      const lineData = filteredData.map((d) => ({ time: toTime(d), value: d.close }));
       const isUp = data.length >= 2 && data[data.length - 1].close >= data[0].close;
       const color = isUp ? "#10b981" : "#ef4444";
       const areaSeries = mainChart.addSeries(AreaSeries, {
@@ -229,7 +255,7 @@ export default function CandlestickChart({ data, currency = "$", height = 320, e
     const volumeSeries = mainChart.addSeries(HistogramSeries, {
       priceFormat: { type: "volume" }, priceScaleId: "volume",
     });
-    volumeSeries.setData(data.map((d) => ({
+    volumeSeries.setData(filteredData.map((d) => ({
       time: toTime(d), value: d.volume,
       color: d.close >= d.open ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.3)",
     })));
@@ -270,7 +296,7 @@ export default function CandlestickChart({ data, currency = "$", height = 320, e
     // ── Helper: build time array once for sub-panel alignment ──────
     // All sub-panels use the FULL time array from data[] so their logical
     // indices stay aligned with the main chart — prevents x-axis mismatch.
-    const allTimes = data.map((d) => toTime(d));
+    const allTimes = filteredData.map((d) => toTime(d));
     function filterValid(vals: (number | null)[]): { time: any; value: number }[] {
       return vals
         .map((v, i) => v != null ? { time: allTimes[i], value: v } : null)
