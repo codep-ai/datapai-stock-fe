@@ -54,10 +54,14 @@ export async function POST(
   let exchange = "";
   try { const d = await lookupStock(symbol); exchange = d?.exchange ?? "US"; } catch { exchange = "US"; }
 
-  let userId = 0;
+  let userId   = 0;
+  let userUuid = "";           // Phase 1.14: full UUID alongside legacy int
   try {
     const user = await getAuthUser();
-    if (user?.userId) userId = parseInt(user.userId, 10) || 0;
+    if (user?.userId) {
+      userUuid = user.userId;
+      userId   = parseInt(user.userId, 10) || 0;   // best-effort for legacy key
+    }
   } catch { /* anonymous */ }
 
   try {
@@ -69,6 +73,7 @@ export async function POST(
         exchange,
         message,
         user_id:       userId,
+        user_uuid:     userUuid || null,   // Phase 1.14: backend keys chat_sessions / user_context on this
         session_id:    body.session_id   ?? null,
         new_session:   body.new_session  ?? false,
         lang:          body.lang         ?? "en",

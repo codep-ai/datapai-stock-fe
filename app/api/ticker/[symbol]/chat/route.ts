@@ -82,6 +82,7 @@ export async function POST(
         exchange,
         message,
         user_id:         userId,
+        user_uuid:       userUuid || null,   // Phase 1.14: full UUID so backend can key user_context / chat_sessions correctly
         session_id:      body.session_id ?? null,
         new_session:     body.new_session ?? false,
         lang:            effectiveLang,
