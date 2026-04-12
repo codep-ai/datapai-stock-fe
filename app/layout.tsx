@@ -105,6 +105,8 @@ export default async function RootLayout({
                 style={{ fontSize: "0.92rem" }}>{t(labels, "nav_pricing")}</a>
               <a href="/why-datapai" data-tour="nav-why-us" className="text-gray-500 hover:text-[#2e8b57] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
                 style={{ fontSize: "0.92rem" }}>{t(labels, "nav_why_us") || "Why Us?"}</a>
+              <a href="https://datap.ai/about" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-[#2e8b57] transition-colors font-medium px-4 py-2 rounded-md hover:bg-gray-50"
+                style={{ fontSize: "0.92rem" }}>About</a>
             </nav>
 
             {/* Right: sponsor logos + lang toggle + auth */}
