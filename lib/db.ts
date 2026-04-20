@@ -228,6 +228,63 @@ export async function insertRun(id: string, startedAt: string, plannedCount = 0)
   );
 }
 
+// ─── Cost control (DB-driven) ─────────────────────────────────────────────
+
+let _frameworkPool: Pool | null = null;
+function getFrameworkPool(): Pool {
+  if (_frameworkPool) return _frameworkPool;
+  _frameworkPool = new Pool({
+    host: process.env.FRAMEWORK_DB_HOST ?? 'localhost',
+    port: parseInt(process.env.FRAMEWORK_DB_PORT ?? '5433', 10),
+    user: process.env.FRAMEWORK_DB_USER ?? 'postgres',
+    password: process.env.FRAMEWORK_DB_PASSWORD ?? process.env.PGPASSWORD ?? 'postgres',
+    database: process.env.FRAMEWORK_DB_NAME ?? 'datapai_auth_db',
+    max: 2,
+    idleTimeoutMillis: 10_000,
+  });
+  return _frameworkPool;
+}
+
+/**
+ * DB-driven integer config read from datapai.sys_common_config on framework_db.
+ * Falls back to the supplied default on any read failure (connection, missing row).
+ */
+export async function getConfigInt(
+  configType: string,
+  configKey: string,
+  defaultValue: number,
+): Promise<number> {
+  try {
+    const { rows } = await getFrameworkPool().query<{ config_value: string }>(
+      `SELECT config_value FROM datapai.sys_common_config
+       WHERE config_type = $1 AND config_key = $2
+       LIMIT 1`,
+      [configType, configKey],
+    );
+    if (rows[0]?.config_value) {
+      const n = parseInt(rows[0].config_value, 10);
+      if (!Number.isNaN(n)) return n;
+    }
+  } catch (e) {
+    console.warn(`[cost-control] framework_db read failed for ${configType}.${configKey}:`, e);
+  }
+  return defaultValue;
+}
+
+/**
+ * Sum of scan budget consumed today. Counts GREATEST(scanned_count, planned_count)
+ * so that in-flight PENDING/RUNNING runs can't be under-counted.
+ */
+export async function getTodayScanBudgetConsumed(): Promise<number> {
+  const rows = await q<{ total: string }>(
+    `SELECT COALESCE(SUM(GREATEST(scanned_count, planned_count)), 0)::text AS total
+     FROM datapai.runs
+     WHERE started_at::date = CURRENT_DATE
+       AND status IN ('PENDING', 'RUNNING', 'SUCCESS', 'PARTIAL')`,
+  );
+  return parseInt(rows[0]?.total ?? '0', 10);
+}
+
 export async function startRun(id: string): Promise<void> {
   await exec(`UPDATE datapai.runs SET status='RUNNING' WHERE id=$1`, [id]);
 }

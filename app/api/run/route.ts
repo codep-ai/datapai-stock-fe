@@ -18,7 +18,7 @@
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { scanTicker, AGENT_ENABLED, resolveTickerUrl } from "@/lib/scan-pipeline";
-import { insertRun, startRun, finishRun, failRun, getWatchlist, getAllWatchlistTickers, getActiveStocks, lookupStock } from "@/lib/db";
+import { insertRun, startRun, finishRun, failRun, getWatchlist, getAllWatchlistTickers, getActiveStocks, lookupStock, getConfigInt, getTodayScanBudgetConsumed } from "@/lib/db";
 import type { ActiveStock } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
 import { UNIVERSE, ASX_UNIVERSE } from "@/lib/universe";
@@ -109,6 +109,21 @@ export async function POST(req: NextRequest) {
   const seen = new Set(baseUniverse.map((t) => t.symbol));
   const extra = watchlistForExchange.filter((t) => !seen.has(t.symbol));
   universe = [...baseUniverse, ...extra];
+
+  // ─── Cost control (DB-driven) ──────────────────────────────────────────
+  // Read cap from framework_db.datapai.sys_common_config — customer-overridable
+  // without redeploy. Default 50 scans/day if config row missing.
+  const dailyCap = await getConfigInt('cost_control', 'tinyfish_daily_cap_stock', 50);
+  const consumed = await getTodayScanBudgetConsumed();
+  if (consumed + universe.length > dailyCap) {
+    return NextResponse.json({
+      error: 'tinyfish_daily_cap_exceeded',
+      message: `Stock scan budget exceeded for today: ${consumed} already consumed; adding ${universe.length} would exceed the daily cap of ${dailyCap}. Try again tomorrow or raise the cap in sys_common_config (config_type='cost_control', config_key='tinyfish_daily_cap_stock').`,
+      cap: dailyCap,
+      consumed_today: consumed,
+      proposed: universe.length,
+    }, { status: 429 });
+  }
 
   const runId = crypto.randomUUID();
   const startedAt = new Date().toISOString();
