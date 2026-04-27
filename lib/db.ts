@@ -851,6 +851,16 @@ export async function getLatestPricesForWatchlist(
   // after fetching the correct daily close from Yahoo, so this always
   // returns the right price — live during trading, correct close after EOD.
   // change_pct: vs previous day's EOD close from datapai.prices.
+  // Ticker-format gotcha (see memory: stock platform infra):
+  //   datapai.prices stores WITH suffix:    BHP.AX, 2892.TW, 0700.HK, VIC.VN
+  //   datapai.ohlcv_intraday stores WITHOUT: BHP,    2892,    0700,    VIC
+  // The previous JOIN compared raw tickers, so for every non-US exchange
+  // (ASX/HKEX/TWSE/HOSE/KLSE/IDX/SET/...) it never matched → prev_close NULL
+  // → change_pct=0. Fix: strip the trailing `.XX` suffix on the prices side.
+  //
+  // Also: an intraday bar > 3x prev_close is treated as a bad data point
+  // (e.g. 2892.TW = $3915 vs prior $28 — a scale/parsing bug in the intraday
+  // ingestion). Fall back to the previous EOD close in that case.
   const rows = await q<TickerPrice>(
     `WITH latest AS (
        SELECT DISTINCT ON (ticker)
@@ -860,19 +870,28 @@ export async function getLatestPricesForWatchlist(
        ORDER BY ticker, ts DESC
      ),
      prev_eod AS (
-       SELECT DISTINCT ON (p.ticker)
-              p.ticker, p.close
+       -- Strip yfinance suffix on prices.ticker so it joins to the bare
+       -- ticker stored in ohlcv_intraday. Suffixes are 1-3 uppercase letters.
+       SELECT DISTINCT ON (regexp_replace(p.ticker, '\\.[A-Z]+$', ''))
+              regexp_replace(p.ticker, '\\.[A-Z]+$', '') AS ticker,
+              p.close
        FROM datapai.prices p
-       INNER JOIN latest l ON l.ticker = p.ticker
-       WHERE p.ticker = ANY($1)
-         AND p.exchange = ANY($2)
+       INNER JOIN latest l
+         ON l.ticker = regexp_replace(p.ticker, '\\.[A-Z]+$', '')
+       WHERE p.exchange = ANY($2)
          AND p.trade_date::date < l.bar_date
-       ORDER BY p.ticker, p.trade_date DESC
+       ORDER BY regexp_replace(p.ticker, '\\.[A-Z]+$', ''), p.trade_date DESC
      )
      SELECT l.ticker,
-            l.close,
+            -- Sanity-cap obvious bad intraday data (>3x prev close = scale bug)
+            CASE WHEN pe.close IS NOT NULL AND pe.close > 0
+                      AND l.close > pe.close * 3
+                 THEN pe.close
+                 ELSE l.close
+            END AS close,
             COALESCE(pe.close, l.close) AS prev_close,
             CASE WHEN pe.close IS NOT NULL AND pe.close <> 0
+                      AND l.close <= pe.close * 3
                  THEN ROUND(((l.close - pe.close) / pe.close * 100)::numeric, 2)
                  ELSE 0
             END AS change_pct,
