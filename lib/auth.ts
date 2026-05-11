@@ -11,7 +11,7 @@ import { cookies } from "next/headers";
 import { getSession, deleteSession } from "./db";
 
 // ─── SSO JWT cookie (auth.datap.ai) ──────────────────────────────────────────
-const SSO_COOKIE = "datapai_auth";
+export const SSO_COOKIE = "datapai_auth";
 const JWT_SECRET = process.env.JWT_SECRET || "";
 
 // ─── Cookie config ────────────────────────────────────────────────────────────
