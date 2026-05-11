@@ -23,15 +23,20 @@ export async function POST(req: Request) {
   }
 
   let body: {
-    message?:      string;
-    session_id?:   string | null;
-    new_session?:  boolean;
-    lang?:         string;
-    page_context?: string | null;
-    ticker?:       string | null;
-    exchange?:     string | null;
+    message?:           string;
+    session_id?:        string | null;
+    new_session?:       boolean;
+    lang?:              string;
+    page_context?:      string | null;
+    ticker?:            string | null;
+    exchange?:          string | null;
+    sensitivity_level?: string;
   } = {};
   try { body = await req.json(); } catch { /* ok */ }
+
+  // Sensitivity Dial — accept ?level= URL param or body field.
+  const urlLevel = new URL(req.url).searchParams.get("level");
+  const sensitivityLevel = (urlLevel || body.sensitivity_level || "").toUpperCase();
 
   const message = body.message?.trim();
   if (!message) {
@@ -58,7 +63,8 @@ export async function POST(req: Request) {
     : null;
 
   try {
-    const upstream = await fetch(`${AGENT_BASE}/agent/stock-chat/stream`, {
+    const upstreamUrl = `${AGENT_BASE}/agent/stock-chat/stream${sensitivityLevel ? `?level=${encodeURIComponent(sensitivityLevel)}` : ""}`;
+    const upstream = await fetch(upstreamUrl, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({
@@ -74,6 +80,7 @@ export async function POST(req: Request) {
         // Pass page context as snapshot_text so the LLM has grounding
         snapshot_text: systemContext,
         ta_signal_md:  null,
+        sensitivity_level: sensitivityLevel || undefined,
       }),
       signal: AbortSignal.timeout(55_000),
     });

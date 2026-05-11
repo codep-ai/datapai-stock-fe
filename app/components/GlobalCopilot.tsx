@@ -129,6 +129,23 @@ export default function GlobalCopilot({ lang = "en" }: { lang?: string }) {
   const [ctxLoading, setCtxLoading] = useState(false);
   const [minimised, setMinimised] = useState(false);
 
+  // ── Sensitivity Dial — same 5-level config as StockChatPanel.
+  // Customer-tunable governance: Permissive/Light/Balanced/Strict/Lockdown.
+  type SensitivityLevel = "PERMISSIVE" | "LIGHT" | "BALANCED" | "STRICT" | "LOCKDOWN";
+  const [sensitivityLevel, setSensitivityLevel] = useState<SensitivityLevel>("BALANCED");
+  const SENSITIVITY_LEVELS: { value: SensitivityLevel; label: string; emoji: string; hint: string; color: string }[] = [
+    { value: "PERMISSIVE", label: "Permissive", emoji: "🟢", color: "#16a34a",
+      hint: "Answer almost anything. Marketing chat, lead-gen, growth phase." },
+    { value: "LIGHT",      label: "Light",      emoji: "🟡", color: "#ca8a04",
+      hint: "Warn-only on advice; allow with disclaimer. Support chat." },
+    { value: "BALANCED",   label: "Balanced",   emoji: "🔵", color: "#2563eb",
+      hint: "Refuse personal advice; factual answers OK. Default for retail." },
+    { value: "STRICT",     label: "Strict",     emoji: "🟠", color: "#ea580c",
+      hint: "Refuse anything advisory. 30 days before AFSL renewal." },
+    { value: "LOCKDOWN",   label: "Lockdown",   emoji: "🔴", color: "#dc2626",
+      hint: "Factual product info only. AFSL renewal week / active examination." },
+  ];
+
   // Hydrate from sessionStorage on first mount
   useEffect(() => {
     const saved = loadPersistedState();
@@ -234,19 +251,23 @@ export default function GlobalCopilot({ lang = "en" }: { lang?: string }) {
     setError("");
 
     try {
-      const res = await fetch("/api/copilot/stream", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({
-          message:      text.trim(),
-          session_id:   sessionId,
-          lang,
-          page_context: buildContextString(),
-          ticker:       currentTicker,
-          exchange:     currentTicker ? (pageCtx?.exchange as string ?? "US") : null,
-        }),
-        signal: AbortSignal.timeout(60_000),
-      });
+      const res = await fetch(
+        `/api/copilot/stream${sensitivityLevel !== "BALANCED" ? `?level=${sensitivityLevel}` : ""}`,
+        {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({
+            message:      text.trim(),
+            session_id:   sessionId,
+            lang,
+            page_context: buildContextString(),
+            ticker:       currentTicker,
+            exchange:     currentTicker ? (pageCtx?.exchange as string ?? "US") : null,
+            sensitivity_level: sensitivityLevel,
+          }),
+          signal: AbortSignal.timeout(60_000),
+        }
+      );
 
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
 
@@ -577,6 +598,34 @@ export default function GlobalCopilot({ lang = "en" }: { lang?: string }) {
         )}
 
         <div ref={bottomRef} />
+      </div>
+
+      {/* ── Sensitivity Dial — 5-level governance picker ────────────────── */}
+      <div className="border-t border-gray-100 px-3 py-1.5 bg-gradient-to-r from-gray-50 to-white flex-shrink-0">
+        <div className="flex items-center gap-1 flex-wrap">
+          <span className="text-[8px] uppercase tracking-wide font-bold text-gray-500 mr-1">
+            Governance
+          </span>
+          {SENSITIVITY_LEVELS.map((lvl) => {
+            const active = lvl.value === sensitivityLevel;
+            return (
+              <button
+                key={lvl.value}
+                onClick={() => setSensitivityLevel(lvl.value)}
+                disabled={loading}
+                title={lvl.hint}
+                className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full transition-all ${active ? "shadow-sm" : "opacity-50 hover:opacity-100"}`}
+                style={{
+                  background: active ? lvl.color : "#f3f4f6",
+                  color: active ? "#fff" : "#4b5563",
+                  border: active ? `1px solid ${lvl.color}` : "1px solid transparent",
+                }}
+              >
+                {lvl.emoji} {lvl.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* ── Input area ──────────────────────────────────────────────────── */}
