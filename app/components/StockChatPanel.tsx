@@ -75,16 +75,16 @@ export default function StockChatPanel({
   type SensitivityLevel = "PERMISSIVE" | "LIGHT" | "BALANCED" | "STRICT" | "LOCKDOWN";
   const [sensitivityLevel, setSensitivityLevel] = useState<SensitivityLevel>("BALANCED");
   const SENSITIVITY_LEVELS: { value: SensitivityLevel; label: string; emoji: string; hint: string; color: string }[] = [
-    { value: "PERMISSIVE", label: "Permissive", emoji: "🟢", color: "#16a34a",
-      hint: "Answer almost anything. Marketing chat, lead-gen, growth phase." },
-    { value: "LIGHT",      label: "Light",      emoji: "🟡", color: "#ca8a04",
-      hint: "Warn-only on advice; allow with disclaimer. Support chat." },
-    { value: "BALANCED",   label: "Balanced",   emoji: "🔵", color: "#2563eb",
-      hint: "Refuse personal advice; factual answers OK. Default for retail." },
-    { value: "STRICT",     label: "Strict",     emoji: "🟠", color: "#ea580c",
-      hint: "Refuse anything advisory. 30 days before AFSL renewal." },
-    { value: "LOCKDOWN",   label: "Lockdown",   emoji: "🔴", color: "#dc2626",
-      hint: "Factual product info only. AFSL renewal week / active examination." },
+    { value: "PERMISSIVE", label: "1 — Most Open", emoji: "🟢", color: "#16a34a",
+      hint: "Loosest. Bot gives full research view + reasoning. Lead-gen / growth." },
+    { value: "LIGHT",      label: "2 — Light",     emoji: "🟡", color: "#ca8a04",
+      hint: "Informational tone. Bot leans bullish / neutral / bearish, no firm call." },
+    { value: "BALANCED",   label: "3 — Standard",  emoji: "🔵", color: "#2563eb",
+      hint: "Production default. Refuses personal advice; factual answers OK." },
+    { value: "STRICT",     label: "4 — Strict",    emoji: "🟠", color: "#ea580c",
+      hint: "Refuses anything advisory. Tighten 30 days before AFSL renewal." },
+    { value: "LOCKDOWN",   label: "5 — Maximum",   emoji: "🔴", color: "#dc2626",
+      hint: "Tightest. Factual product info only. Active regulator examination." },
   ];
   const currentLevelMeta = SENSITIVITY_LEVELS.find(l => l.value === sensitivityLevel) ?? SENSITIVITY_LEVELS[2];
 
