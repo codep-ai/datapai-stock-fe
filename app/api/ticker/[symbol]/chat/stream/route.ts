@@ -40,8 +40,14 @@ export async function POST(
     lang?: string;
     ta_signal_md?: string;
     snapshot_text?: string;
+    sensitivity_level?: string;
   } = {};
   try { body = await req.json(); } catch { /* ok */ }
+
+  // Sensitivity Dial — accept ?level= URL param OR body field. Demo flips
+  // the dial live; persistent customer config will move to DB in Phase 2.
+  const urlLevel = new URL(req.url).searchParams.get("level");
+  const sensitivityLevel = (urlLevel || body.sensitivity_level || "").toUpperCase();
 
   const message = body.message?.trim();
   if (!message) {
@@ -65,7 +71,8 @@ export async function POST(
   } catch { /* anonymous */ }
 
   try {
-    const upstream = await fetch(`${AGENT_BASE}/agent/stock-chat/stream`, {
+    const upstreamUrl = `${AGENT_BASE}/agent/stock-chat/stream${sensitivityLevel ? `?level=${encodeURIComponent(sensitivityLevel)}` : ""}`;
+    const upstream = await fetch(upstreamUrl, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({
@@ -79,6 +86,7 @@ export async function POST(
         lang:          body.lang         ?? "en",
         ta_signal_md:  body.ta_signal_md  ?? null,
         snapshot_text: body.snapshot_text ?? null,
+        sensitivity_level: sensitivityLevel || undefined,
       }),
       signal: AbortSignal.timeout(55_000),
     });
