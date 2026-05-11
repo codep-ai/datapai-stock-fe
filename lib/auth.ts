@@ -96,10 +96,18 @@ export async function getAuthUser(): Promise<AuthUser | null> {
   const cookieStore = await cookies();
 
   // 1) Prefer new SSO JWT cookie from auth.datap.ai
+  // The JWT carries BOTH `sub` (legacy integer user_id, kept for backcompat)
+  // AND `uuid` (the canonical UUID stored in datapai.users.id and used by
+  // every downstream domain table — watchlist, watchlists, chat_sessions,
+  // fct_ai_guardrail_decision, etc). Always prefer the UUID; only fall back
+  // to sub if the SSO server forgot to include uuid in the payload.
   const jwt = cookieStore.get(SSO_COOKIE)?.value;
   if (jwt && JWT_SECRET) {
     const payload = verifyJwtHs256(jwt, JWT_SECRET);
-    if (payload) return { userId: String(payload.sub), email: payload.email };
+    if (payload) {
+      const uuid = (payload.uuid || "").trim();
+      return { userId: uuid || String(payload.sub), email: payload.email };
+    }
   }
 
   // 2) Legacy session cookie (local stock-fe sessions) — kept as fallback
