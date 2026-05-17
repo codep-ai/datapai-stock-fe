@@ -807,8 +807,69 @@ export async function markPasswordResetTokenUsed(tokenHash: string): Promise<voi
 }
 
 // ─── Watchlist ────────────────────────────────────────────────────────────
+//
+// IMPORTANT: datapai.watchlist + datapai.watchlists are postgres_fdw FOREIGN
+// tables (server = framework_db). Two consequences:
+//   1. `ON CONFLICT` is NOT supported on foreign tables — any INSERT ... ON
+//      CONFLICT throws "no unique or exclusion constraint matching". The old
+//      addToWatchlist used ON CONFLICT, so EVERY add (incl. screenshot
+//      import) silently errored → 0 ingested. We do a manual exists-check
+//      upsert instead.
+//   2. watchlist.list_id is uuid NOT NULL — every row must belong to a
+//      watchlist GROUP (datapai.watchlists). The original single-list code
+//      predates groups; the groups schema was added EC2-only and the FE
+//      code lost to a --delete sync. We resolve a default group here so
+//      single-list behaviour keeps working while groups are rebuilt.
 
-export async function getWatchlist(userId: string): Promise<WatchlistItem[]> {
+/** Resolve the user's default watchlist group id. Lowest sort_order wins;
+ *  creates a "My Watchlist" group if the user has none. */
+async function resolveDefaultListId(userId: string): Promise<string> {
+  const rows = await q<{ id: string }>(
+    `SELECT id FROM datapai.watchlists WHERE user_id=$1
+     ORDER BY sort_order ASC, created_at ASC LIMIT 1`,
+    [userId]
+  );
+  if (rows.length > 0) return rows[0].id;
+
+  // No groups yet — create the canonical default.
+  const created = await q<{ id: string }>(
+    `INSERT INTO datapai.watchlists (id, user_id, name, sort_order, created_at)
+     VALUES (gen_random_uuid(), $1, 'My Watchlist', 0, now())
+     RETURNING id`,
+    [userId]
+  );
+  return created[0].id;
+}
+
+export async function getWatchlists(
+  userId: string
+): Promise<{ id: string; name: string; sort_order: number; count: number }[]> {
+  return q(
+    `SELECT wl.id, wl.name, wl.sort_order,
+            COUNT(w.symbol)::int AS count
+     FROM datapai.watchlists wl
+     LEFT JOIN datapai.watchlist w
+       ON w.list_id = wl.id AND w.user_id = wl.user_id
+     WHERE wl.user_id = $1
+     GROUP BY wl.id, wl.name, wl.sort_order
+     ORDER BY wl.sort_order ASC, wl.created_at ASC`,
+    [userId]
+  );
+}
+
+/** Items for a user. Optionally scoped to a single group (listId). */
+export async function getWatchlist(
+  userId: string,
+  listId?: string
+): Promise<WatchlistItem[]> {
+  if (listId) {
+    return q<WatchlistItem>(
+      `SELECT user_id, symbol, exchange, name, added_at
+       FROM datapai.watchlist WHERE user_id=$1 AND list_id=$2
+       ORDER BY added_at DESC`,
+      [userId, listId]
+    );
+  }
   return q<WatchlistItem>(
     `SELECT user_id, symbol, exchange, name, added_at
      FROM datapai.watchlist WHERE user_id=$1 ORDER BY added_at DESC`,
@@ -816,12 +877,50 @@ export async function getWatchlist(userId: string): Promise<WatchlistItem[]> {
   );
 }
 
-export async function addToWatchlist(userId: string, symbol: string, exchange: string, name: string | null): Promise<void> {
+export async function addToWatchlist(
+  userId: string,
+  symbol: string,
+  exchange: string,
+  name: string | null,
+  listId?: string,
+): Promise<void> {
+  const sym = symbol.toUpperCase();
+  const list = listId || (await resolveDefaultListId(userId));
+  const now = new Date().toISOString();
+
+  // Manual upsert — ON CONFLICT is unsupported on FDW foreign tables.
+  const existing = await q<{ symbol: string }>(
+    `SELECT symbol FROM datapai.watchlist
+     WHERE user_id=$1 AND symbol=$2 LIMIT 1`,
+    [userId, sym]
+  );
+  if (existing.length > 0) {
+    await exec(
+      `UPDATE datapai.watchlist
+       SET exchange=$3, name=$4, added_at=$5, list_id=$6
+       WHERE user_id=$1 AND symbol=$2`,
+      [userId, sym, exchange, name, now, list]
+    );
+  } else {
+    await exec(
+      `INSERT INTO datapai.watchlist
+         (user_id, symbol, exchange, name, added_at, list_id)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [userId, sym, exchange, name, now, list]
+    );
+  }
+}
+
+/** Move a ticker to a different group. */
+export async function moveWatchlistItem(
+  userId: string,
+  symbol: string,
+  listId: string,
+): Promise<void> {
   await exec(
-    `INSERT INTO datapai.watchlist (user_id, symbol, exchange, name, added_at)
-     VALUES ($1,$2,$3,$4,$5)
-     ON CONFLICT (user_id, symbol) DO UPDATE SET exchange=$3, name=$4, added_at=$5`,
-    [userId, symbol.toUpperCase(), exchange, name, new Date().toISOString()]
+    `UPDATE datapai.watchlist SET list_id=$3
+     WHERE user_id=$1 AND symbol=$2`,
+    [userId, symbol.toUpperCase(), listId]
   );
 }
 
