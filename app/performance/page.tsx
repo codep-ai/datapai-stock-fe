@@ -138,6 +138,7 @@ export default function PerformancePage() {
   const [expandedTicker, setExpandedTicker] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
+  const [todayOnly, setTodayOnly] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -279,22 +280,32 @@ export default function PerformancePage() {
 
               {/* Recommendations table — click row to expand thesis */}
               <div className="bg-white rounded-xl border overflow-hidden">
-                <div className="px-5 py-3 border-b bg-gray-50 flex items-center justify-between">
+                <div className="px-5 py-3 border-b bg-gray-50 flex items-center justify-between gap-3 flex-wrap">
                   <h2 className="text-sm font-semibold text-gray-700">AI Analyst — Latest Calls</h2>
-                  <select
-                    className="text-xs border rounded px-2 py-1 text-gray-600"
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value)}
-                  >
-                    <option value="">All Directions</option>
-                    <option value="STRONG_BUY">{dirLabel("STRONG_BUY", labels)}</option>
-                    <option value="BUY">{dirLabel("BUY", labels)}</option>
-                    <option value="HOLD">{dirLabel("HOLD", labels)}</option>
-                    <option value="WATCH">{dirLabel("WATCH", labels)}</option>
-                    <option value="AVOID">{dirLabel("AVOID", labels)}</option>
-                    <option value="SELL">{dirLabel("SELL", labels)}</option>
-                    <option value="STRONG_SELL">{dirLabel("STRONG_SELL", labels)}</option>
-                  </select>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTodayOnly(v => !v)}
+                      className={`text-xs px-3 py-1 rounded border transition-colors ${todayOnly ? "bg-[#2e8b57] border-[#2e8b57] text-white" : "bg-white border-gray-300 text-gray-600 hover:bg-gray-100"}`}
+                      title="Show only calls computed today"
+                    >
+                      Today only
+                    </button>
+                    <select
+                      className="text-xs border rounded px-2 py-1 text-gray-600"
+                      value={filter}
+                      onChange={(e) => setFilter(e.target.value)}
+                    >
+                      <option value="">All Directions</option>
+                      <option value="STRONG_BUY">{dirLabel("STRONG_BUY", labels)}</option>
+                      <option value="BUY">{dirLabel("BUY", labels)}</option>
+                      <option value="HOLD">{dirLabel("HOLD", labels)}</option>
+                      <option value="WATCH">{dirLabel("WATCH", labels)}</option>
+                      <option value="AVOID">{dirLabel("AVOID", labels)}</option>
+                      <option value="SELL">{dirLabel("SELL", labels)}</option>
+                      <option value="STRONG_SELL">{dirLabel("STRONG_SELL", labels)}</option>
+                    </select>
+                  </div>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -310,7 +321,17 @@ export default function PerformancePage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {synth.map((r, i) => {
+                      {(() => {
+                        const todayStr = new Date().toLocaleDateString();
+                        const sorted = [...synth]
+                          .filter(r => !todayOnly || (r.computed_at && new Date(r.computed_at).toLocaleDateString() === todayStr))
+                          .sort((a, b) => {
+                            const ta = a.computed_at ? new Date(a.computed_at).getTime() : 0;
+                            const tb = b.computed_at ? new Date(b.computed_at).getTime() : 0;
+                            return tb - ta; // newest first
+                          });
+                        return sorted;
+                      })().map((r, i) => {
                         const conf = Number(r.confidence);
                         const isOpen = expandedTicker === `${r.ticker}-${r.exchange}`;
                         return (

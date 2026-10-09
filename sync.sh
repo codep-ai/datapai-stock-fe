@@ -2,7 +2,7 @@
 # Sync datapai-stock-fe to EC2 server
 # Usage: ./sync.sh
 
-rsync -avz --delete --progress \
+rsync -avz --progress \
   -e "ssh -i ~/.ssh/Linux-CodeCambat.pem" \
   --exclude '.claude/' \
   --exclude '.git/' \
